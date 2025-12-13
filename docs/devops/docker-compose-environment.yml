@@ -1,0 +1,132 @@
+version: '3.9'
+services:
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883" # default mqtt port
+      - "9001:9001" # default websockets port
+    volumes:
+      - ./mosquitto:/mosquitto/config:rw
+      - ./data:/mosquitto/data:rw
+      - ./log:/mosquitto/log:rw
+    networks:
+      - iot-network
+
+  iot-mysql:
+    image: mysql:8.0.32
+    container_name: iot-mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: 123456
+    ports:
+      - "13306:3306"
+    volumes:
+      - ./mysql/sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+    networks:
+      - iot-network
+
+  # phpmyadmin https://hub.docker.com/_/phpmyadmin
+  phpmyadmin:
+    image: phpmyadmin:5.2.1
+    container_name: iot-phpmyadmin
+    hostname: phpmyadmin
+    ports:
+      - "8899:80"
+    environment:
+      - PMA_HOST=iot-mysql
+      - PMA_PORT=3306
+      - MYSQL_ROOT_PASSWORD=123456
+    depends_on:
+      iot-mysql:
+        condition: service_healthy
+    networks:
+      - iot-network
+
+  # publisher:
+  #   build: 
+  #     context: ../../Publisher
+  #     dockerfile: Dockerfile
+  #   container_name: mqtt-publisher
+  #   restart: always
+  #   environment:
+  #     TZ: Asia/Shanghai
+  #     MQTT_BROKER: tcp://mqtt:1883
+  #   depends_on:
+  #     mqtt:
+  #       condition: service_healthy
+  #   networks:
+  #     - iot-network
+  #   volumes:
+  #     - ../../Data:/app/Data:ro
+
+  # subscriber:
+  #   build: 
+  #     context: ../../Subscriber
+  #     dockerfile: Dockerfile
+  #   container_name: mqtt-subscriber
+  #   restart: always
+  #   environment:
+  #     TZ: Asia/Shanghai
+  #     MQTT_BROKER: tcp://mqtt:1883
+  #     SPRING_DATASOURCE_URL: jdbc:mysql://iot-mysql:3306/iot_db
+  #     SPRING_DATASOURCE_USERNAME: root
+  #     SPRING_DATASOURCE_PASSWORD: 123456
+  #     SPRING_PROFILES_ACTIVE: docker
+  #   depends_on:
+  #     mqtt:
+  #       condition: service_healthy
+  #     iot-mysql:
+  #       condition: service_healthy
+  #   networks:
+  #     - iot-network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  
+  # web:
+  #   build: 
+  #     context: ../../Web
+  #     dockerfile: Dockerfile
+  #   container_name: iot-web
+  #   restart: always
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     TZ: Asia/Shanghai
+  #     SPRING_DATASOURCE_URL: jdbc:mysql://iot-mysql:3306/iot_db
+  #     SPRING_DATASOURCE_USERNAME: root
+  #     SPRING_DATASOURCE_PASSWORD: 123456
+  #     SPRING_PROFILES_ACTIVE: docker
+  #   depends_on:
+  #     iot-mysql:
+  #       condition: service_healthy
+  #   networks:
+  #     - iot-network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+
+volumes:
+  config:
+  data:
+  log:
+
+networks:
+  iot-network:
+    driver: bridge
