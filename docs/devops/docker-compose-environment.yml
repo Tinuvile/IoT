@@ -58,6 +58,8 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: mqtt-publisher
   #   restart: always
+  #   ports:
+  #     - "8081:8081"
   #   environment:
   #     TZ: Asia/Shanghai
   #     MQTT_BROKER: tcp://mqtt:1883
@@ -67,7 +69,7 @@ services:
   #   networks:
   #     - iot-network
   #   volumes:
-  #     - ../../Data:/app/Data:ro
+  #     - ../../Publisher/Data:/app/Data:ro
 
   # subscriber:
   #   build: 

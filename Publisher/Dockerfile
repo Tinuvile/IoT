@@ -34,6 +34,9 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD ps aux | grep java || exit 1
 
+# 暴露端口
+EXPOSE 8081
+
 # 设置JVM参数和运行应用
 ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC"
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
