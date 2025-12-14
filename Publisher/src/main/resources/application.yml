@@ -1,0 +1,56 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: iot-publisher
+  profiles:
+    active: dev
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+
+# MQTT配置
+mqtt:
+  broker-url: ${MQTT_BROKER:tcp://localhost:1883}
+  client-id: iot-publisher-${random.uuid}
+  username: ${MQTT_USERNAME:iotuser}
+  password: ${MQTT_PASSWORD:iotpassword}
+  topics:
+    temperature: iot/sensors/temperature
+    humidity: iot/sensors/humidity  
+    pressure: iot/sensors/pressure
+  qos: 1
+  retained: false
+
+# 数据发布配置
+publisher:
+  data:
+    directory: ${DATA_DIR:./Data}
+    files:
+      temperature: temperature.txt
+      humidity: humidity.txt
+      pressure: pressure.txt
+  publish:
+    interval: 5000  # 发布间隔毫秒
+    batch-size: 10  # 批量发送大小
+    auto-start: false  # 是否自动开始发布
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.tinuvile: DEBUG
+    org.eclipse.paho: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

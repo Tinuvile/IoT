@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout}">
+<head>
+    <title>IoT数据发布者 - 数据发布</title>
+</head>
+<body>
+    <th:block th:fragment="content">
+        <!-- 页面标题 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="h3 mb-0">
+                    <i class="fas fa-paper-plane text-primary me-2"></i>
+                    数据发布控制
+                </h2>
+                <p class="text-muted mb-0">高级发布控制和实时监控</p>
+            </div>
+        </div>
+
+        <!-- 发布控制面板 -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-play-circle me-2"></i>发布控制
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-success btn-lg w-100" id="start-publish-btn" onclick="startPublishing()">
+                                    <i class="fas fa-play me-2"></i>开始发布
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-danger btn-lg w-100" id="stop-publish-btn" onclick="stopPublishing()">
+                                    <i class="fas fa-stop me-2"></i>停止发布
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-outline-danger w-100" onclick="publishSingle('temperature')">
+                                    <i class="fas fa-thermometer-half me-2"></i>发布温度
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-outline-primary w-100" onclick="publishSingle('humidity')">
+                                    <i class="fas fa-tint me-2"></i>发布湿度
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-outline-success w-100" onclick="publishSingle('pressure')">
+                                    <i class="fas fa-weight me-2"></i>发布气压
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <button class="btn btn-warning w-100" onclick="resetStatistics()">
+                                    <i class="fas fa-redo me-2"></i>重置统计
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-info w-100" onclick="refreshData()">
+                                    <i class="fas fa-sync me-2"></i>刷新数据
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 发布状态 -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>当前状态
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <h6 class="text-muted">发布状态</h6>
+                                <h4 id="publish-status-text" class="text-danger">未启动</h4>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <h6 class="text-muted">发布速率</h6>
+                                <h4 id="publish-rate-text" class="text-primary">0 条/秒</h4>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <h6 class="text-muted">运行时长</h6>
+                                <h4 id="running-time" class="text-info">00:00:00</h4>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <h6 class="text-muted">总发布量</h6>
+                                <h4 id="total-published-text" class="text-success">0</h4>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6 class="text-muted">当前传感器类型</h6>
+                            <span id="current-sensor-type" class="badge bg-secondary fs-6">未知</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 传感器数据统计 -->
+        <div class="row mb-4">
+            <div class="col-lg-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <i class="fas fa-thermometer-half fa-4x text-danger"></i>
+                        </div>
+                        <h5 class="card-title">温度传感器</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <h6 class="text-muted">总数据</h6>
+                                <h4 id="temp-total" class="text-dark">0</h4>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="text-muted">已发布</h6>
+                                <h4 id="temp-published" class="text-danger">0</h4>
+                            </div>
+                        </div>
+                        <div class="progress mt-3" style="height: 10px;">
+                            <div id="temp-progress" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <i class="fas fa-tint fa-4x text-primary"></i>
+                        </div>
+                        <h5 class="card-title">湿度传感器</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <h6 class="text-muted">总数据</h6>
+                                <h4 id="humid-total" class="text-dark">0</h4>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="text-muted">已发布</h6>
+                                <h4 id="humid-published" class="text-primary">0</h4>
+                            </div>
+                        </div>
+                        <div class="progress mt-3" style="height: 10px;">
+                            <div id="humid-progress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <i class="fas fa-weight fa-4x text-success"></i>
+                        </div>
+                        <h5 class="card-title">气压传感器</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <h6 class="text-muted">总数据</h6>
+                                <h4 id="pressure-total" class="text-dark">0</h4>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="text-muted">已发布</h6>
+                                <h4 id="pressure-published" class="text-success">0</h4>
+                            </div>
+                        </div>
+                        <div class="progress mt-3" style="height: 10px;">
+                            <div id="pressure-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时发布图表 -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>实时发布速率
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="publishRateChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>发布日志
+                        </h5>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <div id="publish-log" class="small">
+                            <p class="text-muted">暂无发布记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </th:block>
+
+    <!-- 页面特定脚本 -->
+    <th:block th:fragment="page-scripts">
+        <script>
+            let publishRateChart;
+            let publishRateData = [];
+            let publishRateLabels = [];
+            let startTime = null;
+            
+            // 页面加载完成后初始化
+            document.addEventListener('DOMContentLoaded', function() {
+                initPublishRateChart();
+                fetchSystemInfo();
+                fetchPublishStatus();
+                
+                // 定时更新数据
+                setInterval(fetchSystemInfo, 5000);
+                setInterval(fetchPublishStatus, 1000);
+            });
+            
+            // 初始化发布速率图表
+            function initPublishRateChart() {
+                const ctx = document.getElementById('publishRateChart').getContext('2d');
+                publishRateChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: publishRateLabels,
+                        datasets: [{
+                            label: '发布速率 (条/秒)',
+                            data: publishRateData,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '发布速率 (条/秒)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '时间'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 获取系统信息
+            function fetchSystemInfo() {
+                fetch('/api/publisher/system-info')
+                    .then(response => response.json())
+                    .then(data => updateSystemInfo(data))
+                    .catch(error => console.error('获取系统信息失败:', error));
+            }
+            
+            // 获取发布状态
+            function fetchPublishStatus() {
+                fetch('/api/publisher/status')
+                    .then(response => response.json())
+                    .then(data => updatePublishStatus(data))
+                    .catch(error => console.error('获取发布状态失败:', error));
+            }
+            
+            // 更新系统信息
+            function updateSystemInfo(systemInfo) {
+                // 更新传感器数据统计
+                document.getElementById('temp-total').textContent = formatNumber(systemInfo.temperatureCount);
+                document.getElementById('humid-total').textContent = formatNumber(systemInfo.humidityCount);
+                document.getElementById('pressure-total').textContent = formatNumber(systemInfo.pressureCount);
+            }
+            
+            // 更新发布状态
+            function updatePublishStatus(status) {
+                // 更新基本状态
+                const publishStatusText = document.getElementById('publish-status-text');
+                const publishRateText = document.getElementById('publish-rate-text');
+                const totalPublishedText = document.getElementById('total-published-text');
+                const runningTimeEl = document.getElementById('running-time');
+                const currentSensorType = document.getElementById('current-sensor-type');
+                
+                if (status.running) {
+                    publishStatusText.textContent = '运行中';
+                    publishStatusText.className = 'text-success';
+                    
+                    document.getElementById('start-publish-btn').disabled = true;
+                    document.getElementById('stop-publish-btn').disabled = false;
+                    
+                    if (!startTime && status.start_time) {
+                        startTime = new Date(status.start_time);
+                    }
+                } else {
+                    publishStatusText.textContent = '已停止';
+                    publishStatusText.className = 'text-danger';
+                    
+                    document.getElementById('start-publish-btn').disabled = false;
+                    document.getElementById('stop-publish-btn').disabled = true;
+                    
+                    startTime = null;
+                }
+                
+                publishRateText.textContent = status.publish_rate + ' 条/秒';
+                totalPublishedText.textContent = formatNumber(status.total_published);
+                
+                // 更新运行时长
+                if (startTime) {
+                    const now = new Date();
+                    const elapsed = Math.floor((now - startTime) / 1000);
+                    const hours = Math.floor(elapsed / 3600);
+                    const minutes = Math.floor((elapsed % 3600) / 60);
+                    const seconds = elapsed % 60;
+                    runningTimeEl.textContent = 
+                        String(hours).padStart(2, '0') + ':' +
+                        String(minutes).padStart(2, '0') + ':' +
+                        String(seconds).padStart(2, '0');
+                } else {
+                    runningTimeEl.textContent = '00:00:00';
+                }
+                
+                // 更新当前传感器类型
+                if (status.current_sensor_type) {
+                    currentSensorType.textContent = getSensorTypeDisplayName(status.current_sensor_type);
+                    currentSensorType.className = 'badge bg-primary fs-6';
+                } else {
+                    currentSensorType.textContent = '未知';
+                    currentSensorType.className = 'badge bg-secondary fs-6';
+                }
+                
+                // 更新传感器发布计数和进度
+                updateSensorProgress('temp', systemInfo?.temperatureCount || 0, status.temperature_count);
+                updateSensorProgress('humid', systemInfo?.humidityCount || 0, status.humidity_count);
+                updateSensorProgress('pressure', systemInfo?.pressureCount || 0, status.pressure_count);
+                
+                // 更新发布速率图表
+                updatePublishRateChart(status.publish_rate);
+                
+                // 更新发布日志
+                if (status.running && status.last_publish_time) {
+                    addPublishLog(status);
+                }
+            }
+            
+            // 更新传感器进度条
+            function updateSensorProgress(sensorPrefix, total, published) {
+                const publishedEl = document.getElementById(sensorPrefix + '-published');
+                const progressEl = document.getElementById(sensorPrefix + '-progress');
+                
+                publishedEl.textContent = formatNumber(published);
+                
+                if (total > 0) {
+                    const percentage = (published / total) * 100;
+                    progressEl.style.width = Math.min(percentage, 100) + '%';
+                } else {
+                    progressEl.style.width = '0%';
+                }
+            }
+            
+            // 更新发布速率图表
+            function updatePublishRateChart(rate) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('zh-CN', {hour12: false});
+                
+                publishRateData.push(rate);
+                publishRateLabels.push(timeStr);
+                
+                // 保持最近30个数据点
+                if (publishRateData.length > 30) {
+                    publishRateData.shift();
+                    publishRateLabels.shift();
+                }
+                
+                publishRateChart.update('none');
+            }
+            
+            // 添加发布日志
+            function addPublishLog(status) {
+                const logContainer = document.getElementById('publish-log');
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('zh-CN', {hour12: false});
+                
+                const logEntry = document.createElement('div');
+                logEntry.className = 'mb-2 p-2 bg-light rounded';
+                logEntry.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">${timeStr}</span>
+                        <span class="badge bg-success">${status.publish_rate} 条/秒</span>
+                    </div>
+                    <div class="small text-muted">
+                        总计: ${formatNumber(status.total_published)} | 
+                        温度: ${formatNumber(status.temperature_count)} | 
+                        湿度: ${formatNumber(status.humidity_count)} | 
+                        气压: ${formatNumber(status.pressure_count)}
+                    </div>
+                `;
+                
+                logContainer.insertBefore(logEntry, logContainer.firstChild);
+                
+                // 保持最近20条日志
+                const logs = logContainer.children;
+                if (logs.length > 20) {
+                    logContainer.removeChild(logs[logs.length - 1]);
+                }
+                
+                // 如果是第一条日志，移除"暂无记录"提示
+                const noLogMsg = logContainer.querySelector('.text-muted');
+                if (noLogMsg && noLogMsg.textContent.includes('暂无发布记录')) {
+                    noLogMsg.remove();
+                }
+            }
+            
+            // 获取传感器类型显示名称
+            function getSensorTypeDisplayName(type) {
+                const typeMap = {
+                    'temperature': '温度',
+                    'humidity': '湿度',
+                    'pressure': '气压'
+                };
+                return typeMap[type] || type;
+            }
+            
+            // 开始发布
+            function startPublishing() {
+                const button = document.getElementById('start-publish-btn');
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>启动中...';
+                
+                fetch('/api/publisher/start', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('发布服务已启动', 'success');
+                        startTime = new Date();
+                    } else {
+                        showToast('启动失败: ' + data.message, 'danger');
+                        button.disabled = false;
+                        button.innerHTML = '<i class="fas fa-play me-2"></i>开始发布';
+                    }
+                })
+                .catch(error => {
+                    console.error('启动失败:', error);
+                    showToast('启动失败', 'danger');
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-play me-2"></i>开始发布';
+                });
+            }
+            
+            // 停止发布
+            function stopPublishing() {
+                const button = document.getElementById('stop-publish-btn');
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>停止中...';
+                
+                fetch('/api/publisher/stop', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('发布服务已停止', 'success');
+                        startTime = null;
+                    } else {
+                        showToast('停止失败: ' + data.message, 'danger');
+                        button.disabled = false;
+                        button.innerHTML = '<i class="fas fa-stop me-2"></i>停止发布';
+                    }
+                })
+                .catch(error => {
+                    console.error('停止失败:', error);
+                    showToast('停止失败', 'danger');
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-stop me-2"></i>停止发布';
+                });
+            }
+            
+            // 发布单条数据
+            function publishSingle(sensorType) {
+                fetch(`/api/publisher/publish/${sensorType}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                    } else {
+                        showToast('发布失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('发布失败:', error);
+                    showToast('发布失败', 'danger');
+                });
+            }
+            
+            // 重置统计
+            function resetStatistics() {
+                if (confirm('确定要重置所有统计数据吗？')) {
+                    fetch('/api/publisher/reset', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('统计数据已重置', 'success');
+                            // 清空图表数据
+                            publishRateData.length = 0;
+                            publishRateLabels.length = 0;
+                            publishRateChart.update();
+                            
+                            // 清空发布日志
+                            const logContainer = document.getElementById('publish-log');
+                            logContainer.innerHTML = '<p class="text-muted">暂无发布记录</p>';
+                        } else {
+                            showToast('重置失败: ' + data.message, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('重置失败:', error);
+                        showToast('重置失败', 'danger');
+                    });
+                }
+            }
+            
+            // 刷新数据
+            function refreshData() {
+                fetchSystemInfo();
+                fetchPublishStatus();
+                showToast('数据已刷新', 'info');
+            }
+        </script>
+    </th:block>
+</body>
+</html>
