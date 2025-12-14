@@ -18,33 +18,34 @@ public class WebController {
     private PublisherService publisherService;
     
     /**
-     * 首页
+     * 首页 - 重定向到静态HTML文件
      */
     @GetMapping("/")
     public String index(Model model) {
-        try {
-            PublisherService.SystemInfo systemInfo = publisherService.getSystemInfo();
-            model.addAttribute("systemInfo", systemInfo);
-        } catch (Exception e) {
-            model.addAttribute("error", e.getMessage());
-        }
-        
-        return "index";
+        return "redirect:/index.html";
     }
     
     /**
-     * 发布控制页面
+     * 发布控制页面 - 重定向到静态HTML文件
      */
     @GetMapping("/publisher")
     public String publisher(Model model) {
-        return "publisher";
+        return "redirect:/publisher.html";
     }
     
     /**
-     * 系统监控页面
+     * 系统监控页面 - 重定向到静态HTML文件
      */
     @GetMapping("/monitor")
     public String monitor(Model model) {
-        return "monitor";
+        return "redirect:/monitor.html";
+    }
+    
+    /**
+     * 系统布局页面 - 重定向到静态HTML文件
+     */
+    @GetMapping("/layout")
+    public String layout(Model model) {
+        return "redirect:/layout.html";
     }
 }
