@@ -10,7 +10,7 @@ COPY src/ ./src/
 # 构建应用
 RUN apt-get update && apt-get install -y maven && \
     mvn clean package -DskipTests && \
-    mv target/*.jar app.jar
+    mv target/*-jar-with-dependencies.jar app.jar
 
 # 运行阶段
 FROM eclipse-temurin:8-jre-alpine
@@ -30,15 +30,13 @@ RUN chown -R appuser:appgroup /app
 # 切换到非root用户
 USER appuser
 
-# 暴露端口（Spring Boot actuator默认端口）
-EXPOSE 8080
-
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD ps aux | grep java || exit 1
+
+# 暴露端口
+EXPOSE 8081
 
 # 设置JVM参数和运行应用
-ENV JAVA_OPTS="-Xms256m -Xmx1024m -XX:+UseG1GC"
-ENV SPRING_PROFILES_ACTIVE=docker
-
+ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC"
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

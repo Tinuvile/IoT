@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT数据订阅者 - 数据监控</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .sidebar {
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+        }
+        .sidebar .nav-link {
+            color: #ecf0f1;
+            border-radius: 8px;
+            margin: 2px 0;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .main-content {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+        .status-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .status-card:hover {
+            transform: translateY(-2px);
+        }
+        .realtime-data {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 14px;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: #2c3e50 !important;
+        }
+        .data-item {
+            border-left: 4px solid;
+            padding-left: 15px;
+            margin-bottom: 10px;
+        }
+        .temp-item { border-left-color: #dc3545; }
+        .humidity-item { border-left-color: #0d6efd; }
+        .pressure-item { border-left-color: #198754; }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-satellite-dish text-success me-2"></i>
+                IoT数据订阅者
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text">
+                    <i class="fas fa-clock me-1"></i>
+                    <span id="current-time"></span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <nav class="col-md-2 sidebar px-0">
+                <div class="p-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html">
+                                <i class="fas fa-home me-2"></i>首页
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="subscriber.html">
+                                <i class="fas fa-download me-2"></i>数据订阅
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="monitor.html">
+                                <i class="fas fa-chart-line me-2"></i>数据监控
+                            </a>
+                        </li>
+                        <li class="nav-item mt-3">
+                            <hr class="text-white-50">
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="layout.html">
+                                <i class="fas fa-heartbeat me-2"></i>系统布局
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showToast('系统信息功能需要服务器支持', 'info')">
+                                <i class="fas fa-cogs me-2"></i>系统信息
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区域 -->
+            <main class="col-md-10 main-content p-4">
+                <!-- 页面标题 -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="h3 mb-0">
+                            <i class="fas fa-chart-line text-success me-2"></i>
+                            数据监控面板
+                        </h2>
+                        <p class="text-muted mb-0">实时数据监控和分析结果展示</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary" onclick="toggleAutoRefresh()">
+                            <i class="fas fa-sync me-2" id="refresh-icon"></i>
+                            <span id="refresh-text">自动刷新: 开启</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 实时状态卡片 -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-3">
+                        <div class="card status-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-muted mb-1">订阅状态</h6>
+                                        <h4 class="mb-0" id="subscribe-status">检查中...</h4>
+                                    </div>
+                                    <div class="text-success">
+                                        <i class="fas fa-download fa-2x"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small id="subscribe-status-detail" class="text-muted">正在检查订阅状态...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-3">
+                        <div class="card status-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-muted mb-1">MQTT连接</h6>
+                                        <h4 class="mb-0" id="mqtt-status">检查中...</h4>
+                                    </div>
+                                    <div class="text-primary">
+                                        <i class="fas fa-network-wired fa-2x"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small id="mqtt-broker" class="text-muted">检查中...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-3">
+                        <div class="card status-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-muted mb-1">总接收量</h6>
+                                        <h4 class="mb-0" id="total-received">-</h4>
+                                    </div>
+                                    <div class="text-info">
+                                        <i class="fas fa-database fa-2x"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        存储: <span id="stored-count">-</span> 条
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-3">
+                        <div class="card status-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-muted mb-1">数据质量</h6>
+                                        <h4 class="mb-0" id="data-quality">优秀</h4>
+                                    </div>
+                                    <div class="text-warning">
+                                        <i class="fas fa-star fa-2x"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        完整性: <span id="data-completeness">100%</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 传感器数据过滤器 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-filter me-2"></i>数据过滤器
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="sensor-type-filter" class="form-label">传感器类型</label>
+                                        <select class="form-select" id="sensor-type-filter" onchange="updateCharts()">
+                                            <option value="all">全部类型</option>
+                                            <option value="temperature">温度</option>
+                                            <option value="humidity">湿度</option>
+                                            <option value="pressure">气压</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="data-limit" class="form-label">显示条数</label>
+                                        <select class="form-select" id="data-limit" onchange="updateCharts()">
+                                            <option value="20">最近20条</option>
+                                            <option value="50" selected>最近50条</option>
+                                            <option value="100">最近100条</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">快速时间范围</label>
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="setTimeRange('1h')">1小时</button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="setTimeRange('6h')">6小时</button>
+                                            <button type="button" class="btn btn-outline-secondary active" onclick="setTimeRange('24h')">24小时</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button class="btn btn-primary w-100" onclick="refreshAnalysis()">
+                                            <i class="fas fa-chart-bar me-1"></i>刷新分析
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 图表区域 -->
+                <div class="row mb-4">
+                    <!-- 实时数据趋势 -->
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-area me-2"></i>实时数据趋势
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="dataChart" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 传感器类型分布 -->
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-pie me-2"></i>传感器分布
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="sensorChart" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据分析结果 -->
+                <div class="row mb-4">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-calculator me-2"></i>数据分析结果
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- 温度分析 -->
+                                    <div class="col-md-4">
+                                        <div class="card border-danger">
+                                            <div class="card-header bg-danger text-white">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-thermometer-half me-2"></i>温度分析
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <dl class="mb-0">
+                                                    <dt class="small">平均值:</dt>
+                                                    <dd id="temp-avg" class="fw-bold text-danger">-°C</dd>
+                                                    <dt class="small">最大值:</dt>
+                                                    <dd id="temp-max" class="fw-bold text-danger">-°C</dd>
+                                                    <dt class="small">最小值:</dt>
+                                                    <dd id="temp-min" class="fw-bold text-danger">-°C</dd>
+                                                    <dt class="small">标准差:</dt>
+                                                    <dd id="temp-std" class="fw-bold text-muted">-</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 湿度分析 -->
+                                    <div class="col-md-4">
+                                        <div class="card border-primary">
+                                            <div class="card-header bg-primary text-white">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-tint me-2"></i>湿度分析
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <dl class="mb-0">
+                                                    <dt class="small">平均值:</dt>
+                                                    <dd id="humidity-avg" class="fw-bold text-primary">-%</dd>
+                                                    <dt class="small">最大值:</dt>
+                                                    <dd id="humidity-max" class="fw-bold text-primary">-%</dd>
+                                                    <dt class="small">最小值:</dt>
+                                                    <dd id="humidity-min" class="fw-bold text-primary">-%</dd>
+                                                    <dt class="small">标准差:</dt>
+                                                    <dd id="humidity-std" class="fw-bold text-muted">-</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 气压分析 -->
+                                    <div class="col-md-4">
+                                        <div class="card border-success">
+                                            <div class="card-header bg-success text-white">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-weight me-2"></i>气压分析
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <dl class="mb-0">
+                                                    <dt class="small">平均值:</dt>
+                                                    <dd id="pressure-avg" class="fw-bold text-success">-hPa</dd>
+                                                    <dt class="small">最大值:</dt>
+                                                    <dd id="pressure-max" class="fw-bold text-success">-hPa</dd>
+                                                    <dt class="small">最小值:</dt>
+                                                    <dd id="pressure-min" class="fw-bold text-success">-hPa</dd>
+                                                    <dt class="small">标准差:</dt>
+                                                    <dd id="pressure-std" class="fw-bold text-muted">-</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 存储统计 -->
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>存储统计
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <dl class="row">
+                                    <dt class="col-sm-6">总数据量:</dt>
+                                    <dd class="col-sm-6" id="storage-total">-</dd>
+                                    
+                                    <dt class="col-sm-6">温度数据:</dt>
+                                    <dd class="col-sm-6" id="storage-temp">-</dd>
+                                    
+                                    <dt class="col-sm-6">湿度数据:</dt>
+                                    <dd class="col-sm-6" id="storage-humidity">-</dd>
+                                    
+                                    <dt class="col-sm-6">气压数据:</dt>
+                                    <dd class="col-sm-6" id="storage-pressure">-</dd>
+                                </dl>
+                                
+                                <hr>
+                                
+                                <h6>订阅信息</h6>
+                                <dl class="row">
+                                    <dt class="col-sm-6">订阅主题:</dt>
+                                    <dd class="col-sm-6" id="subscribe-topics">iot/sensors/+</dd>
+                                    
+                                    <dt class="col-sm-6">开始时间:</dt>
+                                    <dd class="col-sm-6" id="subscribe-start-time">-</dd>
+                                    
+                                    <dt class="col-sm-6">运行时长:</dt>
+                                    <dd class="col-sm-6" id="subscribe-uptime">-</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最新数据列表 -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-list me-2"></i>最新接收数据
+                                </h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="exportData()">
+                                        <i class="fas fa-download me-1"></i>导出数据
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning" onclick="clearDataLog()">
+                                        <i class="fas fa-trash me-1"></i>清空日志
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="data-log" class="realtime-data" style="height: 300px; overflow-y: auto;">
+                                    <div class="text-muted p-3">等待数据接收...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- JavaScript -->
+    <script>
+        let dataChart, sensorChart;
+        let dataChartData = {
+            labels: [],
+            datasets: []
+        };
+        let autoRefreshEnabled = true;
+        let refreshInterval;
+        let currentTimeRange = '24h';
+        let subscribeStartTime = null;
+        
+        // 传感器配置
+        const sensorConfig = {
+            temperature: { label: '温度', color: 'rgb(255, 99, 132)', unit: '°C' },
+            humidity: { label: '湿度', color: 'rgb(54, 162, 235)', unit: '%' },
+            pressure: { label: '气压', color: 'rgb(75, 192, 192)', unit: 'hPa' }
+        };
+        
+        // 更新当前时间
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString('zh-CN');
+        }
+        
+        // 每秒更新时间
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+        
+        // 工具函数：显示Toast消息
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container') || createToastContainer();
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+        
+        // 创建Toast容器
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(container);
+            return container;
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            startAutoRefresh();
+            fetchSystemInfo();
+            fetchSubscriberStatus();
+            fetchAnalysisResults();
+            fetchLatestData();
+            
+            // 检查URL哈希，如果有特定传感器类型则自动切换
+            const hash = window.location.hash.substring(1);
+            if (['temperature', 'humidity', 'pressure'].includes(hash)) {
+                document.getElementById('sensor-type-filter').value = hash;
+                updateCharts();
+            }
+        });
+        
+        // 初始化图表
+        function initCharts() {
+            // 数据趋势图
+            const dataCtx = document.getElementById('dataChart').getContext('2d');
+            dataChart = new Chart(dataCtx, {
+                type: 'line',
+                data: dataChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '数值'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+            
+            // 传感器分布饼图
+            const sensorCtx = document.getElementById('sensorChart').getContext('2d');
+            sensorChart = new Chart(sensorCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['温度', '湿度', '气压'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(75, 192, 192, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 开始自动刷新
+        function startAutoRefresh() {
+            refreshInterval = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    fetchSystemInfo();
+                    fetchSubscriberStatus();
+                    fetchLatestData();
+                }
+            }, 5000);
+        }
+        
+        // 获取系统信息
+        function fetchSystemInfo() {
+            fetch('/api/subscriber/system-info')
+                .then(response => response.json())
+                .then(data => updateSystemInfo(data))
+                .catch(error => console.error('获取系统信息失败:', error));
+        }
+        
+        // 获取订阅状态
+        function fetchSubscriberStatus() {
+            fetch('/api/subscriber/status')
+                .then(response => response.json())
+                .then(data => updateSubscriberStatus(data))
+                .catch(error => console.error('获取订阅状态失败:', error));
+        }
+
+        // 获取分析结果
+        function fetchAnalysisResults() {
+            fetch('/api/subscriber/analysis')
+                .then(response => response.json())
+                .then(data => updateAnalysisResults(data))
+                .catch(error => console.error('获取分析结果失败:', error));
+        }
+
+        // 获取最新数据
+        function fetchLatestData() {
+            const limit = document.getElementById('data-limit').value;
+            fetch(`/api/subscriber/data/latest?limit=${limit}`)
+                .then(response => response.json())
+                .then(data => updateLatestDataDisplay(data))
+                .catch(error => console.error('获取最新数据失败:', error));
+        }
+
+        // 获取存储统计
+        function fetchStorageStatistics() {
+            fetch('/api/subscriber/storage/statistics')
+                .then(response => response.json())
+                .then(data => updateStorageStatistics(data))
+                .catch(error => console.error('获取存储统计失败:', error));
+        }
+        
+        // 更新系统信息
+        function updateSystemInfo(systemInfo) {
+            // 更新MQTT状态
+            const mqttStatus = document.getElementById('mqtt-status');
+            const mqttBroker = document.getElementById('mqtt-broker');
+            
+            if (systemInfo.mqttConnected) {
+                mqttStatus.textContent = '已连接';
+                mqttStatus.className = 'text-success mb-0';
+                mqttBroker.textContent = systemInfo.mqttConnectionInfo?.brokerUrl || '本地MQTT服务器';
+            } else {
+                mqttStatus.textContent = '未连接';
+                mqttStatus.className = 'text-danger mb-0';
+                mqttBroker.textContent = '连接失败';
+            }
+            
+            // 更新总接收量
+            const totalReceived = (systemInfo.temperatureCount || 0) + 
+                                (systemInfo.humidityCount || 0) + 
+                                (systemInfo.pressureCount || 0);
+            document.getElementById('total-received').textContent = formatNumber(totalReceived);
+            document.getElementById('stored-count').textContent = formatNumber(systemInfo.totalDataCount || 0);
+            
+            // 更新存储统计
+            document.getElementById('storage-total').textContent = formatNumber(systemInfo.totalDataCount || 0);
+            document.getElementById('storage-temp').textContent = formatNumber(systemInfo.temperatureCount || 0);
+            document.getElementById('storage-humidity').textContent = formatNumber(systemInfo.humidityCount || 0);
+            document.getElementById('storage-pressure').textContent = formatNumber(systemInfo.pressureCount || 0);
+            
+            // 更新传感器分布图表
+            updateSensorChart(systemInfo.temperatureCount || 0, systemInfo.humidityCount || 0, systemInfo.pressureCount || 0);
+        }
+        
+        // 更新订阅状态
+        function updateSubscriberStatus(status) {
+            const subscribeStatus = document.getElementById('subscribe-status');
+            const subscribeStatusDetail = document.getElementById('subscribe-status-detail');
+            const subscribeStartTimeEl = document.getElementById('subscribe-start-time');
+            const subscribeUptimeEl = document.getElementById('subscribe-uptime');
+            
+            if (status.subscribing) {
+                subscribeStatus.textContent = '订阅中';
+                subscribeStatus.className = 'text-success mb-0';
+                subscribeStatusDetail.innerHTML = '<i class="fas fa-circle text-success me-1"></i>正在接收数据';
+                
+                if (!subscribeStartTime) {
+                    subscribeStartTime = new Date();
+                    subscribeStartTimeEl.textContent = subscribeStartTime.toLocaleString('zh-CN');
+                }
+            } else {
+                subscribeStatus.textContent = '未订阅';
+                subscribeStatus.className = 'text-danger mb-0';
+                subscribeStatusDetail.innerHTML = '<i class="fas fa-circle text-danger me-1"></i>未在接收数据';
+                subscribeStartTime = null;
+                subscribeStartTimeEl.textContent = '-';
+            }
+            
+            // 更新运行时长
+            if (subscribeStartTime) {
+                const now = new Date();
+                const elapsed = Math.floor((now - subscribeStartTime) / 1000);
+                subscribeUptimeEl.textContent = formatDuration(elapsed);
+            } else {
+                subscribeUptimeEl.textContent = '-';
+            }
+        }
+
+        // 更新分析结果
+        function updateAnalysisResults(analysisData) {
+            // 温度分析
+            if (analysisData.temperature) {
+                const tempAnalysis = analysisData.temperature;
+                document.getElementById('temp-avg').textContent = tempAnalysis.average ? tempAnalysis.average.toFixed(1) + '°C' : '-°C';
+                document.getElementById('temp-max').textContent = tempAnalysis.maximum ? tempAnalysis.maximum.toFixed(1) + '°C' : '-°C';
+                document.getElementById('temp-min').textContent = tempAnalysis.minimum ? tempAnalysis.minimum.toFixed(1) + '°C' : '-°C';
+                document.getElementById('temp-std').textContent = tempAnalysis.standardDeviation ? tempAnalysis.standardDeviation.toFixed(2) : '-';
+            }
+            
+            // 湿度分析
+            if (analysisData.humidity) {
+                const humidAnalysis = analysisData.humidity;
+                document.getElementById('humidity-avg').textContent = humidAnalysis.average ? humidAnalysis.average.toFixed(1) + '%' : '-%';
+                document.getElementById('humidity-max').textContent = humidAnalysis.maximum ? humidAnalysis.maximum.toFixed(1) + '%' : '-%';
+                document.getElementById('humidity-min').textContent = humidAnalysis.minimum ? humidAnalysis.minimum.toFixed(1) + '%' : '-%';
+                document.getElementById('humidity-std').textContent = humidAnalysis.standardDeviation ? humidAnalysis.standardDeviation.toFixed(2) : '-';
+            }
+            
+            // 气压分析
+            if (analysisData.pressure) {
+                const pressureAnalysis = analysisData.pressure;
+                document.getElementById('pressure-avg').textContent = pressureAnalysis.average ? pressureAnalysis.average.toFixed(1) + 'hPa' : '-hPa';
+                document.getElementById('pressure-max').textContent = pressureAnalysis.maximum ? pressureAnalysis.maximum.toFixed(1) + 'hPa' : '-hPa';
+                document.getElementById('pressure-min').textContent = pressureAnalysis.minimum ? pressureAnalysis.minimum.toFixed(1) + 'hPa' : '-hPa';
+                document.getElementById('pressure-std').textContent = pressureAnalysis.standardDeviation ? pressureAnalysis.standardDeviation.toFixed(2) : '-';
+            }
+        }
+
+        // 更新最新数据显示
+        function updateLatestDataDisplay(data) {
+            const logContainer = document.getElementById('data-log');
+            
+            // 更新数据趋势图表
+            updateDataChart(data);
+            
+            // 添加到数据日志
+            Object.keys(data).forEach(sensorType => {
+                if (data[sensorType] && data[sensorType].length > 0) {
+                    data[sensorType].forEach(item => {
+                        addDataLogEntry(sensorType, item);
+                    });
+                }
+            });
+        }
+
+        // 更新数据趋势图表
+        function updateDataChart(data) {
+            const filterType = document.getElementById('sensor-type-filter').value;
+            
+            // 清空现有数据
+            dataChartData.labels = [];
+            dataChartData.datasets = [];
+            
+            // 根据过滤器选择要显示的数据
+            const typesToShow = filterType === 'all' ? ['temperature', 'humidity', 'pressure'] : [filterType];
+            
+            typesToShow.forEach(type => {
+                if (data[type] && data[type].length > 0) {
+                    const dataset = {
+                        label: sensorConfig[type].label,
+                        data: [],
+                        borderColor: sensorConfig[type].color,
+                        backgroundColor: sensorConfig[type].color + '20',
+                        tension: 0.4,
+                        fill: false
+                    };
+                    
+                    data[type].forEach(item => {
+                        const time = new Date(item.receivedAt).toLocaleTimeString('zh-CN');
+                        if (!dataChartData.labels.includes(time)) {
+                            dataChartData.labels.push(time);
+                        }
+                        dataset.data.push({
+                            x: time,
+                            y: parseFloat(item.value)
+                        });
+                    });
+                    
+                    dataChartData.datasets.push(dataset);
+                }
+            });
+            
+            dataChart.update('none');
+        }
+
+        // 更新传感器分布图表
+        function updateSensorChart(tempCount, humidCount, pressureCount) {
+            sensorChart.data.datasets[0].data = [
+                parseInt(tempCount) || 0,
+                parseInt(humidCount) || 0, 
+                parseInt(pressureCount) || 0
+            ];
+            sensorChart.update('none');
+        }
+
+        // 添加数据日志条目
+        function addDataLogEntry(sensorType, item) {
+            const logContainer = document.getElementById('data-log');
+            const time = new Date(item.receivedAt).toLocaleString('zh-CN');
+            
+            // 移除"等待数据接收"提示
+            const waitingMsg = logContainer.querySelector('.text-muted');
+            if (waitingMsg && waitingMsg.textContent.includes('等待数据接收')) {
+                waitingMsg.remove();
+            }
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `data-item ${sensorType}-item mb-2`;
+            logEntry.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${sensorConfig[sensorType].label}</strong>
+                        <span class="ms-2 badge bg-secondary">${item.value} ${sensorConfig[sensorType].unit}</span>
+                    </div>
+                    <small class="text-muted">${time}</small>
+                </div>
+            `;
+            
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            
+            // 保持最近100条记录
+            const entries = logContainer.children;
+            if (entries.length > 100) {
+                logContainer.removeChild(entries[entries.length - 1]);
+            }
+        }
+        
+        // 工具函数：格式化数字
+        function formatNumber(num) {
+            return new Intl.NumberFormat('zh-CN').format(num);
+        }
+        
+        // 工具函数：格式化持续时间
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours}h ${minutes}m ${secs}s`;
+        }
+        
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const refreshText = document.getElementById('refresh-text');
+            const refreshIcon = document.getElementById('refresh-icon');
+            
+            if (autoRefreshEnabled) {
+                refreshText.textContent = '自动刷新: 开启';
+                refreshIcon.className = 'fas fa-sync me-2';
+                showToast('自动刷新已开启', 'info');
+            } else {
+                refreshText.textContent = '自动刷新: 关闭';
+                refreshIcon.className = 'fas fa-pause me-2';
+                showToast('自动刷新已关闭', 'warning');
+            }
+        }
+        
+        // 设置时间范围
+        function setTimeRange(range) {
+            currentTimeRange = range;
+            // 更新按钮状态
+            document.querySelectorAll('[onclick^="setTimeRange"]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            updateCharts();
+            showToast(`时间范围已设置为 ${range}`, 'info');
+        }
+        
+        // 更新图表
+        function updateCharts() {
+            fetchLatestData();
+            fetchAnalysisResults();
+        }
+        
+        // 刷新分析结果
+        function refreshAnalysis() {
+            fetch('/api/subscriber/analysis/refresh', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('分析结果已刷新', 'success');
+                    fetchAnalysisResults();
+                } else {
+                    showToast('刷新失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('刷新分析失败:', error);
+                showToast('刷新分析失败', 'danger');
+            });
+        }
+        
+        // 清空数据日志
+        function clearDataLog() {
+            const logContainer = document.getElementById('data-log');
+            logContainer.innerHTML = '<div class="text-muted p-3">数据日志已清空</div>';
+            showToast('数据日志已清空', 'info');
+        }
+        
+        // 导出数据
+        function exportData() {
+            const filterType = document.getElementById('sensor-type-filter').value;
+            const limit = document.getElementById('data-limit').value;
+            
+            let url = `/api/subscriber/data/latest?limit=${limit}`;
+            if (filterType !== 'all') {
+                url = `/api/subscriber/data/latest/${filterType}?limit=${limit}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // 将数据转换为CSV格式并下载
+                    const csv = convertToCSV(data);
+                    downloadCSV(csv, `iot-data-${new Date().toISOString().split('T')[0]}.csv`);
+                    showToast('数据导出成功', 'success');
+                })
+                .catch(error => {
+                    console.error('导出数据失败:', error);
+                    showToast('导出数据失败', 'danger');
+                });
+        }
+        
+        // 转换为CSV格式
+        function convertToCSV(data) {
+            let csv = '传感器类型,数值,单位,接收时间\n';
+            
+            Object.keys(data).forEach(sensorType => {
+                if (data[sensorType] && data[sensorType].length > 0) {
+                    data[sensorType].forEach(item => {
+                        csv += `${sensorConfig[sensorType].label},${item.value},${sensorConfig[sensorType].unit},${new Date(item.receivedAt).toLocaleString('zh-CN')}\n`;
+                    });
+                }
+            });
+            
+            return csv;
+        }
+        
+        // 下载CSV文件
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
