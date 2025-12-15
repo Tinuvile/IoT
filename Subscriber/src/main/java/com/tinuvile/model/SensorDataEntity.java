@@ -1,5 +1,6 @@
 package com.tinuvile.model;
 
+import com.tinuvile.converter.SensorTypeConverter;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,7 +27,7 @@ public class SensorDataEntity {
     @Column(name = "node_id", nullable = false)
     private Integer nodeId;
     
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = SensorTypeConverter.class)
     @Column(name = "sensor_type", nullable = false)
     private SensorType sensorType;
     

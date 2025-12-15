@@ -3,17 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT数据发布者 - 首页</title>
+    <title>IoT数据订阅者 - 首页</title>
     
-    <!-- Bootstrap CSS -->
+    <!-- Bootstrap CSS (本地化) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <!-- Font Awesome (本地化) -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SockJS and STOMP -->
-    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@6.1.0/bundles/stomp.umd.min.js"></script>
     
     <style>
         .sidebar {
@@ -92,8 +89,8 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.html">
-                <i class="fas fa-satellite-dish text-primary me-2"></i>
-                IoT数据发布者
+                <i class="fas fa-satellite-dish text-success me-2"></i>
+                IoT数据订阅者
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text">
@@ -116,13 +113,13 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="publisher.html">
-                                <i class="fas fa-paper-plane me-2"></i>数据发布
+                            <a class="nav-link" href="subscriber.html">
+                                <i class="fas fa-download me-2"></i>数据订阅
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="monitor.html">
-                                <i class="fas fa-chart-line me-2"></i>实时监控
+                                <i class="fas fa-chart-line me-2"></i>数据监控
                             </a>
                         </li>
                         <li class="nav-item mt-3">
@@ -148,10 +145,10 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="h3 mb-0">
-                            <i class="fas fa-satellite-dish text-primary me-2"></i>
-                            IoT数据发布控制台
+                            <i class="fas fa-download text-success me-2"></i>
+                            IoT数据订阅控制台
                         </h2>
-                        <p class="text-muted mb-0">基于MQTT的物联网传感器数据发布系统</p>
+                        <p class="text-muted mb-0">基于MQTT的物联网传感器数据接收与存储系统</p>
                     </div>
                     <div>
                         <span class="badge bg-success fs-6" id="system-status">系统运行中</span>
@@ -174,43 +171,43 @@
                         </div>
                     </div>
 
-                    <!-- 数据文件状态 -->
+                    <!-- 订阅状态 -->
                     <div class="col-xl-3 col-md-6 mb-3">
-                        <div class="card status-card h-100" id="data-status-card">
+                        <div class="card status-card h-100" id="subscribe-status-card">
                             <div class="card-body text-center">
                                 <div class="mb-3">
-                                    <i class="fas fa-database fa-3x text-success"></i>
+                                    <i class="fas fa-download fa-3x text-success"></i>
                                 </div>
-                                <h5 class="card-title">数据文件</h5>
-                                <h3 class="text-muted mb-2" id="data-count">检查中...</h3>
-                                <p class="text-muted mb-0">条传感器数据</p>
+                                <h5 class="card-title">订阅状态</h5>
+                                <h3 class="text-muted mb-2" id="subscribe-status">检查中...</h3>
+                                <p class="text-muted mb-0" id="subscribe-rate">- 条/秒</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 发布状态 -->
+                    <!-- 数据存储 -->
                     <div class="col-xl-3 col-md-6 mb-3">
-                        <div class="card status-card h-100" id="publish-status-card">
+                        <div class="card status-card h-100" id="storage-status-card">
                             <div class="card-body text-center">
                                 <div class="mb-3">
-                                    <i class="fas fa-paper-plane fa-3x text-warning"></i>
+                                    <i class="fas fa-database fa-3x text-info"></i>
                                 </div>
-                                <h5 class="card-title">发布状态</h5>
-                                <h3 class="text-muted mb-2" id="publish-status">检查中...</h3>
-                                <p class="text-muted mb-0" id="publish-rate">- 条/秒</p>
+                                <h5 class="card-title">数据存储</h5>
+                                <h3 class="text-muted mb-2" id="total-stored">检查中...</h3>
+                                <p class="text-muted mb-0">条存储数据</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 总发布量 -->
+                    <!-- 总接收量 -->
                     <div class="col-xl-3 col-md-6 mb-3">
                         <div class="card status-card h-100">
                             <div class="card-body text-center">
                                 <div class="mb-3">
-                                    <i class="fas fa-chart-line fa-3x text-info"></i>
+                                    <i class="fas fa-chart-line fa-3x text-warning"></i>
                                 </div>
-                                <h5 class="card-title">总发布量</h5>
-                                <h3 class="text-info mb-2" id="total-published">-</h3>
+                                <h5 class="card-title">总接收量</h5>
+                                <h3 class="text-warning mb-2" id="total-received">-</h3>
                                 <p class="text-muted mb-0">累计数据条数</p>
                             </div>
                         </div>
@@ -229,22 +226,22 @@
                             <div class="card-body">
                                 <div class="row text-center">
                                     <div class="col-md-3 mb-3">
-                                        <button class="btn btn-success btn-action w-100" id="start-btn" onclick="startPublishing()">
-                                            <i class="fas fa-play me-2"></i>开始发布
+                                        <button class="btn btn-success btn-action w-100" id="start-btn" onclick="startSubscribing()">
+                                            <i class="fas fa-play me-2"></i>开始订阅
                                         </button>
                                     </div>
                                     <div class="col-md-3 mb-3">
-                                        <button class="btn btn-danger btn-action w-100" id="stop-btn" onclick="stopPublishing()" disabled>
-                                            <i class="fas fa-stop me-2"></i>停止发布
+                                        <button class="btn btn-danger btn-action w-100" id="stop-btn" onclick="stopSubscribing()" disabled>
+                                            <i class="fas fa-stop me-2"></i>停止订阅
                                         </button>
                                     </div>
                                     <div class="col-md-3 mb-3">
-                                        <button class="btn btn-warning btn-action w-100" onclick="resetStatistics()">
-                                            <i class="fas fa-redo me-2"></i>重置统计
+                                        <button class="btn btn-warning btn-action w-100" onclick="refreshAnalysis()">
+                                            <i class="fas fa-redo me-2"></i>刷新分析
                                         </button>
                                     </div>
                                     <div class="col-md-3 mb-3">
-                                        <a href="publisher.html" class="btn btn-primary btn-action w-100">
+                                        <a href="subscriber.html" class="btn btn-primary btn-action w-100">
                                             <i class="fas fa-cog me-2"></i>高级控制
                                         </a>
                                     </div>
@@ -266,19 +263,19 @@
                                     <tbody>
                                         <tr>
                                             <td><strong>应用名称</strong></td>
-                                            <td>IoT Publisher</td>
+                                            <td>IoT Subscriber</td>
                                         </tr>
                                         <tr>
                                             <td><strong>端口</strong></td>
-                                            <td>8081</td>
+                                            <td>8082</td>
                                         </tr>
                                         <tr>
-                                            <td><strong>发布间隔</strong></td>
-                                            <td id="publish-interval">-</td>
+                                            <td><strong>订阅主题</strong></td>
+                                            <td id="subscribe-topics">iot/sensors/+</td>
                                         </tr>
                                         <tr>
-                                            <td><strong>批量大小</strong></td>
-                                            <td id="batch-size">-</td>
+                                            <td><strong>数据库连接</strong></td>
+                                            <td id="db-status">检查中...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -295,11 +292,11 @@
                                 <div class="mb-3">
                                     <i class="fas fa-thermometer-half fa-3x text-danger"></i>
                                 </div>
-                                <h5>温度传感器</h5>
-                                <h4 class="text-danger" id="temperature-count">-</h4>
-                                <p class="text-muted">已发布: <span id="temperature-published">-</span></p>
-                                <button class="btn btn-outline-danger btn-sm" onclick="publishSingle('temperature')">
-                                    <i class="fas fa-paper-plane me-1"></i>发布一条
+                                <h5>温度数据</h5>
+                                <h4 class="text-danger" id="temperature-received">-</h4>
+                                <p class="text-muted">最新值: <span id="temperature-latest">-</span>°C</p>
+                                <button class="btn btn-outline-danger btn-sm" onclick="viewLatestData('temperature')">
+                                    <i class="fas fa-eye me-1"></i>查看详情
                                 </button>
                             </div>
                         </div>
@@ -311,11 +308,11 @@
                                 <div class="mb-3">
                                     <i class="fas fa-tint fa-3x text-primary"></i>
                                 </div>
-                                <h5>湿度传感器</h5>
-                                <h4 class="text-primary" id="humidity-count">-</h4>
-                                <p class="text-muted">已发布: <span id="humidity-published">-</span></p>
-                                <button class="btn btn-outline-primary btn-sm" onclick="publishSingle('humidity')">
-                                    <i class="fas fa-paper-plane me-1"></i>发布一条
+                                <h5>湿度数据</h5>
+                                <h4 class="text-primary" id="humidity-received">-</h4>
+                                <p class="text-muted">最新值: <span id="humidity-latest">-</span>%</p>
+                                <button class="btn btn-outline-primary btn-sm" onclick="viewLatestData('humidity')">
+                                    <i class="fas fa-eye me-1"></i>查看详情
                                 </button>
                             </div>
                         </div>
@@ -327,11 +324,11 @@
                                 <div class="mb-3">
                                     <i class="fas fa-weight fa-3x text-success"></i>
                                 </div>
-                                <h5>气压传感器</h5>
-                                <h4 class="text-success" id="pressure-count">-</h4>
-                                <p class="text-muted">已发布: <span id="pressure-published">-</span></p>
-                                <button class="btn btn-outline-success btn-sm" onclick="publishSingle('pressure')">
-                                    <i class="fas fa-paper-plane me-1"></i>发布一条
+                                <h5>气压数据</h5>
+                                <h4 class="text-success" id="pressure-received">-</h4>
+                                <p class="text-muted">最新值: <span id="pressure-latest">-</span>hPa</p>
+                                <button class="btn btn-outline-success btn-sm" onclick="viewLatestData('pressure')">
+                                    <i class="fas fa-eye me-1"></i>查看详情
                                 </button>
                             </div>
                         </div>
@@ -408,32 +405,44 @@
         // 页面加载后立即获取数据
         document.addEventListener('DOMContentLoaded', function() {
             fetchSystemInfo();
-            fetchPublishStatus();
+            fetchSubscriberStatus();
+            fetchLatestData();
             
             // 每5秒刷新一次数据
             setInterval(fetchSystemInfo, 5000);
-            setInterval(fetchPublishStatus, 2000);
+            setInterval(fetchSubscriberStatus, 3000);
+            setInterval(fetchLatestData, 10000);
         });
         
         // 获取系统信息
         function fetchSystemInfo() {
-            fetch('/api/publisher/system-info')
+            fetch('/api/subscriber/system-info')
                 .then(response => response.json())
                 .then(data => updateSystemInfo(data))
                 .catch(error => {
                     console.error('获取系统信息失败:', error);
-                    showToast('获取系统信息失败', 'danger');
+                    // 不显示Toast，避免过度提醒
                 });
         }
         
-        // 获取发布状态
-        function fetchPublishStatus() {
-            fetch('/api/publisher/status')
+        // 获取订阅状态
+        function fetchSubscriberStatus() {
+            fetch('/api/subscriber/status')
                 .then(response => response.json())
-                .then(data => updatePublishStatus(data))
+                .then(data => updateSubscriberStatus(data))
                 .catch(error => {
-                    console.error('获取发布状态失败:', error);
-                    showToast('获取发布状态失败', 'danger');
+                    console.error('获取订阅状态失败:', error);
+                    // 不显示Toast，避免过度提醒
+                });
+        }
+
+        // 获取最新数据
+        function fetchLatestData() {
+            fetch('/api/subscriber/data/latest?limit=1')
+                .then(response => response.json())
+                .then(data => updateLatestDataDisplay(data))
+                .catch(error => {
+                    console.error('获取最新数据失败:', error);
                 });
         }
         
@@ -456,238 +465,174 @@
                 mqttBroker.textContent = '连接失败';
             }
             
-            // 数据文件状态
-            const dataCount = document.getElementById('data-count');
-            const dataCard = document.getElementById('data-status-card');
+            // 数据存储状态
+            const totalStored = document.getElementById('total-stored');
+            const storageCard = document.getElementById('storage-status-card');
             
-            if (systemInfo.dataFilesExist) {
-                dataCount.textContent = formatNumber(systemInfo.totalDataCount);
-                dataCard.className = 'card status-card status-running h-100';
-            } else {
-                dataCount.textContent = '文件缺失';
-                dataCard.className = 'card status-card status-stopped h-100';
-            }
+            totalStored.textContent = formatNumber(systemInfo.totalDataCount || 0);
+            storageCard.className = 'card status-card status-running h-100';
             
             // 传感器数据计数
-            document.getElementById('temperature-count').textContent = formatNumber(systemInfo.temperatureCount);
-            document.getElementById('humidity-count').textContent = formatNumber(systemInfo.humidityCount);
-            document.getElementById('pressure-count').textContent = formatNumber(systemInfo.pressureCount);
-            
-            // 系统配置信息
-            document.getElementById('publish-interval').textContent = systemInfo.publishInterval + 'ms';
-            document.getElementById('batch-size').textContent = systemInfo.batchSize;
+            document.getElementById('temperature-received').textContent = formatNumber(systemInfo.temperatureCount || 0);
+            document.getElementById('humidity-received').textContent = formatNumber(systemInfo.humidityCount || 0);
+            document.getElementById('pressure-received').textContent = formatNumber(systemInfo.pressureCount || 0);
         }
         
-        // 更新发布状态
-        function updatePublishStatus(status) {
-            const publishStatusEl = document.getElementById('publish-status');
-            const publishRateEl = document.getElementById('publish-rate');
-            const totalPublishedEl = document.getElementById('total-published');
-            const publishCard = document.getElementById('publish-status-card');
+        // 更新订阅状态
+        function updateSubscriberStatus(status) {
+            const subscribeStatusEl = document.getElementById('subscribe-status');
+            const subscribeCard = document.getElementById('subscribe-status-card');
             const startBtn = document.getElementById('start-btn');
             const stopBtn = document.getElementById('stop-btn');
+            const totalReceived = document.getElementById('total-received');
             
-            if (status.is_running) {
-                publishStatusEl.textContent = '运行中';
-                publishStatusEl.className = 'text-success mb-2';
-                publishCard.className = 'card status-card status-running h-100';
+            if (status.subscribing) {
+                subscribeStatusEl.textContent = '订阅中';
+                subscribeStatusEl.className = 'text-success mb-2';
+                subscribeCard.className = 'card status-card status-running h-100';
                 
                 // 只有在按钮不在loading状态时才更新
                 if (!isStartButtonLoading) {
                     startBtn.disabled = true;
-                    startBtn.innerHTML = '<i class="fas fa-play me-2"></i>开始发布';
+                    startBtn.innerHTML = '<i class="fas fa-play me-2"></i>开始订阅';
                 }
                 if (!isStopButtonLoading) {
                     stopBtn.disabled = false;
-                    stopBtn.innerHTML = '<i class="fas fa-stop me-2"></i>停止发布';
+                    stopBtn.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
                 }
             } else {
-                publishStatusEl.textContent = '已停止';
-                publishStatusEl.className = 'text-danger mb-2';
-                publishCard.className = 'card status-card status-stopped h-100';
+                subscribeStatusEl.textContent = '未订阅';
+                subscribeStatusEl.className = 'text-danger mb-2';
+                subscribeCard.className = 'card status-card status-stopped h-100';
                 
                 // 只有在按钮不在loading状态时才更新
                 if (!isStartButtonLoading) {
                     startBtn.disabled = false;
-                    startBtn.innerHTML = '<i class="fas fa-play me-2"></i>开始发布';
+                    startBtn.innerHTML = '<i class="fas fa-play me-2"></i>开始订阅';
                 }
                 if (!isStopButtonLoading) {
                     stopBtn.disabled = true;
-                    stopBtn.innerHTML = '<i class="fas fa-stop me-2"></i>停止发布';
+                    stopBtn.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
                 }
             }
             
-            publishRateEl.textContent = status.publish_rate + ' 条/秒';
-            totalPublishedEl.textContent = formatNumber(status.total_published);
-            
-            // 更新传感器发布计数
-            document.getElementById('temperature-published').textContent = formatNumber(status.temperature_count);
-            document.getElementById('humidity-published').textContent = formatNumber(status.humidity_count);
-            document.getElementById('pressure-published').textContent = formatNumber(status.pressure_count);
+            // 更新总接收量
+            const totalCount = (status.temperatureCount || 0) + (status.humidityCount || 0) + (status.pressureCount || 0);
+            totalReceived.textContent = formatNumber(totalCount);
+        }
+
+        // 更新最新数据显示
+        function updateLatestDataDisplay(data) {
+            if (data.temperature && data.temperature.length > 0) {
+                document.getElementById('temperature-latest').textContent = data.temperature[0].value;
+            }
+            if (data.humidity && data.humidity.length > 0) {
+                document.getElementById('humidity-latest').textContent = data.humidity[0].value;
+            }
+            if (data.pressure && data.pressure.length > 0) {
+                document.getElementById('pressure-latest').textContent = data.pressure[0].value;
+            }
         }
         
-        // 开始发布
-        function startPublishing() {
+        // 开始订阅
+        function startSubscribing() {
             const button = document.getElementById('start-btn');
             isStartButtonLoading = true;
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>启动中...';
             
-            fetch('/api/publisher/start', {
+            fetch('/api/subscriber/start', {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showToast('发布服务已启动', 'success');
+                    showToast('订阅服务已启动', 'success');
                 } else {
                     showToast('启动失败: ' + data.message, 'danger');
                     button.disabled = false;
-                    button.innerHTML = '<i class="fas fa-play me-2"></i>开始发布';
+                    button.innerHTML = '<i class="fas fa-play me-2"></i>开始订阅';
                 }
             })
             .catch(error => {
                 console.error('启动失败:', error);
                 showToast('启动失败: ' + error.message, 'danger');
                 button.disabled = false;
-                button.innerHTML = '<i class="fas fa-play me-2"></i>开始发布';
+                button.innerHTML = '<i class="fas fa-play me-2"></i>开始订阅';
             })
             .finally(() => {
                 isStartButtonLoading = false;
             });
         }
         
-        // 停止发布
-        function stopPublishing() {
+        // 停止订阅
+        function stopSubscribing() {
             const button = document.getElementById('stop-btn');
             isStopButtonLoading = true;
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>停止中...';
             
-            fetch('/api/publisher/stop', {
+            fetch('/api/subscriber/stop', {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showToast('发布服务已停止', 'success');
+                    showToast('订阅服务已停止', 'success');
                 } else {
                     showToast('停止失败: ' + data.message, 'danger');
                     button.disabled = true;
-                    button.innerHTML = '<i class="fas fa-stop me-2"></i>停止发布';
+                    button.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
                 }
             })
             .catch(error => {
                 console.error('停止失败:', error);
                 showToast('停止失败: ' + error.message, 'danger');
                 button.disabled = true;
-                button.innerHTML = '<i class="fas fa-stop me-2"></i>停止发布';
+                button.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
             })
             .finally(() => {
                 isStopButtonLoading = false;
             });
         }
         
-        // 重置统计
-        function resetStatistics() {
-            if (confirm('确定要重置所有统计数据吗？')) {
-                // 找到重置按钮
-                const resetButtons = document.querySelectorAll('button[onclick="resetStatistics()"]');
-                const resetButton = resetButtons[0];
+        // 刷新分析结果
+        function refreshAnalysis() {
+            // 找到刷新按钮
+            const refreshButtons = document.querySelectorAll('button[onclick="refreshAnalysis()"]');
+            const refreshButton = refreshButtons[0];
+            
+            if (refreshButton) {
+                const originalHtml = refreshButton.innerHTML;
+                refreshButton.disabled = true;
+                refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>刷新中...';
                 
-                if (resetButton) {
-                    const originalHtml = resetButton.innerHTML;
-                    resetButton.disabled = true;
-                    resetButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>重置中...';
-                    
-                    fetch('/api/publisher/reset', {
-                        method: 'POST'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('统计数据已重置', 'success');
-                        } else {
-                            showToast('重置失败: ' + data.message, 'danger');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('重置失败:', error);
-                        showToast('重置失败: ' + error.message, 'danger');
-                    })
-                    .finally(() => {
-                        resetButton.disabled = false;
-                        resetButton.innerHTML = originalHtml;
-                    });
-                } else {
-                    // 如果找不到按钮，直接调用API
-                    fetch('/api/publisher/reset', {
-                        method: 'POST'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('统计数据已重置', 'success');
-                        } else {
-                            showToast('重置失败: ' + data.message, 'danger');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('重置失败:', error);
-                        showToast('重置失败: ' + error.message, 'danger');
-                    });
-                }
+                fetch('/api/subscriber/analysis/refresh', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('分析结果已刷新', 'success');
+                        fetchLatestData(); // 重新获取数据
+                    } else {
+                        showToast('刷新失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('刷新失败:', error);
+                    showToast('刷新失败: ' + error.message, 'danger');
+                })
+                .finally(() => {
+                    refreshButton.disabled = false;
+                    refreshButton.innerHTML = originalHtml;
+                });
             }
         }
         
-        // 发布单条数据
-        function publishSingle(sensorType) {
-            // 找到对应的按钮
-            const buttons = document.querySelectorAll(`button[onclick="publishSingle('${sensorType}')"]`);
-            const button = buttons[0];
-            
-            if (button && !button.disabled) {
-                const originalHtml = button.innerHTML;
-                button.disabled = true;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>发布中...';
-                
-                fetch(`/api/publisher/publish/${sensorType}`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message, 'success');
-                    } else {
-                        showToast('发布失败: ' + data.message, 'danger');
-                    }
-                })
-                .catch(error => {
-                    console.error('发布失败:', error);
-                    showToast('发布失败: ' + error.message, 'danger');
-                })
-                .finally(() => {
-                    button.disabled = false;
-                    button.innerHTML = originalHtml;
-                });
-            } else {
-                // 如果按钮找不到或已disabled，直接调用API
-                fetch(`/api/publisher/publish/${sensorType}`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message, 'success');
-                    } else {
-                        showToast('发布失败: ' + data.message, 'danger');
-                    }
-                })
-                .catch(error => {
-                    console.error('发布失败:', error);
-                    showToast('发布失败: ' + error.message, 'danger');
-                });
-            }
+        // 查看最新数据详情
+        function viewLatestData(sensorType) {
+            window.location.href = `monitor.html#${sensorType}`;
         }
     </script>
 </body>
