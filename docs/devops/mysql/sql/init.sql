@@ -28,8 +28,11 @@ CREATE TABLE sensor_data (
     value DECIMAL(10,3) NOT NULL COMMENT '传感器数值',
     unit VARCHAR(10) NOT NULL COMMENT '单位',
     timestamp DATETIME NOT NULL COMMENT '数据时间戳',
+    mqtt_topic VARCHAR(255) COMMENT 'MQTT主题',
+    received_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '接收时间',
     raw_data JSON COMMENT '原始数据JSON',
     quality_score TINYINT DEFAULT 100 COMMENT '数据质量评分(0-100)',
+    anomaly_detected BOOLEAN DEFAULT FALSE COMMENT '是否检测到异常',
     is_valid BOOLEAN DEFAULT TRUE COMMENT '数据是否有效',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
     FOREIGN KEY fk_sensor_node (node_id) REFERENCES sensor_nodes(id),
@@ -37,6 +40,7 @@ CREATE TABLE sensor_data (
     INDEX idx_timestamp (timestamp),
     INDEX idx_node_sensor (node_id, sensor_type),
     INDEX idx_timestamp_type (timestamp, sensor_type),
+    INDEX idx_received_time (received_time),
     INDEX idx_location (sensor_location)
 ) COMMENT '传感器数据表';
 
