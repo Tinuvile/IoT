@@ -1,0 +1,80 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: iot-analysis
+  profiles:
+    active: dev
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+
+  # 数据源配置
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:13306/iot_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: iot-analysis-pool
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    open-in-view: false
+
+# MQTT配置
+mqtt:
+  broker-url: ${MQTT_BROKER:tcp://localhost:1883}
+  client-id: iot-analysis-${random.uuid}
+  username: ${MQTT_USERNAME:iotuser}
+  password: ${MQTT_PASSWORD:iotpassword}
+  topics:
+    temperature: iot/sensors/temperature
+    humidity: iot/sensors/humidity  
+    pressure: iot/sensors/pressure
+  qos: 1
+  retained: false
+
+# 数据分析配置
+analysis:
+  storage:
+    directory: ${STORAGE_DIR:./AnalysisData}
+    max-records: 10000  # 最大存储记录数
+    retention-days: 30  # 数据保留天数
+  analysis:
+    window-size: 100  # 分析窗口大小
+    update-interval: 10000  # 分析更新间隔毫秒
+    auto-start: true  # 是否自动开始分析
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.tinuvile: DEBUG
+    org.eclipse.paho: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

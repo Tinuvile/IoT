@@ -723,31 +723,32 @@
 
         // 更新分析结果
         function updateAnalysisResults(analysisData) {
+            // 后端 AnalysisResult 字段：avg_value / max_value / min_value / standard_deviation
             // 温度分析
             if (analysisData.temperature) {
                 const tempAnalysis = analysisData.temperature;
-                document.getElementById('temp-avg').textContent = tempAnalysis.average ? tempAnalysis.average.toFixed(1) + '°C' : '-°C';
-                document.getElementById('temp-max').textContent = tempAnalysis.maximum ? tempAnalysis.maximum.toFixed(1) + '°C' : '-°C';
-                document.getElementById('temp-min').textContent = tempAnalysis.minimum ? tempAnalysis.minimum.toFixed(1) + '°C' : '-°C';
-                document.getElementById('temp-std').textContent = tempAnalysis.standardDeviation ? tempAnalysis.standardDeviation.toFixed(2) : '-';
+                document.getElementById('temp-avg').textContent = (tempAnalysis.avg_value != null) ? tempAnalysis.avg_value.toFixed(1) + '°C' : '-°C';
+                document.getElementById('temp-max').textContent = (tempAnalysis.max_value != null) ? tempAnalysis.max_value.toFixed(1) + '°C' : '-°C';
+                document.getElementById('temp-min').textContent = (tempAnalysis.min_value != null) ? tempAnalysis.min_value.toFixed(1) + '°C' : '-°C';
+                document.getElementById('temp-std').textContent = (tempAnalysis.standard_deviation != null) ? tempAnalysis.standard_deviation.toFixed(2) : '-';
             }
             
             // 湿度分析
             if (analysisData.humidity) {
                 const humidAnalysis = analysisData.humidity;
-                document.getElementById('humidity-avg').textContent = humidAnalysis.average ? humidAnalysis.average.toFixed(1) + '%' : '-%';
-                document.getElementById('humidity-max').textContent = humidAnalysis.maximum ? humidAnalysis.maximum.toFixed(1) + '%' : '-%';
-                document.getElementById('humidity-min').textContent = humidAnalysis.minimum ? humidAnalysis.minimum.toFixed(1) + '%' : '-%';
-                document.getElementById('humidity-std').textContent = humidAnalysis.standardDeviation ? humidAnalysis.standardDeviation.toFixed(2) : '-';
+                document.getElementById('humidity-avg').textContent = (humidAnalysis.avg_value != null) ? humidAnalysis.avg_value.toFixed(1) + '%' : '-%';
+                document.getElementById('humidity-max').textContent = (humidAnalysis.max_value != null) ? humidAnalysis.max_value.toFixed(1) + '%' : '-%';
+                document.getElementById('humidity-min').textContent = (humidAnalysis.min_value != null) ? humidAnalysis.min_value.toFixed(1) + '%' : '-%';
+                document.getElementById('humidity-std').textContent = (humidAnalysis.standard_deviation != null) ? humidAnalysis.standard_deviation.toFixed(2) : '-';
             }
             
             // 气压分析
             if (analysisData.pressure) {
                 const pressureAnalysis = analysisData.pressure;
-                document.getElementById('pressure-avg').textContent = pressureAnalysis.average ? pressureAnalysis.average.toFixed(1) + 'hPa' : '-hPa';
-                document.getElementById('pressure-max').textContent = pressureAnalysis.maximum ? pressureAnalysis.maximum.toFixed(1) + 'hPa' : '-hPa';
-                document.getElementById('pressure-min').textContent = pressureAnalysis.minimum ? pressureAnalysis.minimum.toFixed(1) + 'hPa' : '-hPa';
-                document.getElementById('pressure-std').textContent = pressureAnalysis.standardDeviation ? pressureAnalysis.standardDeviation.toFixed(2) : '-';
+                document.getElementById('pressure-avg').textContent = (pressureAnalysis.avg_value != null) ? pressureAnalysis.avg_value.toFixed(1) + 'hPa' : '-hPa';
+                document.getElementById('pressure-max').textContent = (pressureAnalysis.max_value != null) ? pressureAnalysis.max_value.toFixed(1) + 'hPa' : '-hPa';
+                document.getElementById('pressure-min').textContent = (pressureAnalysis.min_value != null) ? pressureAnalysis.min_value.toFixed(1) + 'hPa' : '-hPa';
+                document.getElementById('pressure-std').textContent = (pressureAnalysis.standard_deviation != null) ? pressureAnalysis.standard_deviation.toFixed(2) : '-';
             }
         }
 
@@ -791,7 +792,8 @@
                     };
                     
                     data[type].forEach(item => {
-                        const time = new Date(item.receivedAt).toLocaleTimeString('zh-CN');
+                        // 后端返回字段：received_time（snake_case）
+                        const time = new Date(item.received_time).toLocaleTimeString('zh-CN');
                         if (!dataChartData.labels.includes(time)) {
                             dataChartData.labels.push(time);
                         }
@@ -821,7 +823,7 @@
         // 添加数据日志条目
         function addDataLogEntry(sensorType, item) {
             const logContainer = document.getElementById('data-log');
-            const time = new Date(item.receivedAt).toLocaleString('zh-CN');
+            const time = new Date(item.received_time).toLocaleString('zh-CN');
             
             // 移除"等待数据接收"提示
             const waitingMsg = logContainer.querySelector('.text-muted');
@@ -957,7 +959,10 @@
             Object.keys(data).forEach(sensorType => {
                 if (data[sensorType] && data[sensorType].length > 0) {
                     data[sensorType].forEach(item => {
-                        csv += `${sensorConfig[sensorType].label},${item.value},${sensorConfig[sensorType].unit},${new Date(item.receivedAt).toLocaleString('zh-CN')}\n`;
+                        const value = (item.value != null) ? item.value : (item.original_data?.value ?? '');
+                        const unit = (item.unit != null) ? item.unit : (item.original_data?.unit ?? sensorConfig[sensorType].unit);
+                        const receivedTime = item.received_time || item.receivedTime || item.receivedAt;
+                        csv += `${sensorConfig[sensorType].label},${value},${unit},${receivedTime ? new Date(receivedTime).toLocaleString('zh-CN') : ''}\n`;
                     });
                 }
             });

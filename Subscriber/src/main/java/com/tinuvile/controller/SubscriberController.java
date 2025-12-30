@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * 订阅者REST API控制器
@@ -47,7 +49,7 @@ public class SubscriberController {
     public ResponseEntity<Map<String, Object>> startSubscribing() {
         try {
             logger.info("接收到开始订阅请求");
-            boolean success = mqttSubscriberService.startSubscribing().get();
+            boolean success = mqttSubscriberService.startSubscribing().get(8, TimeUnit.SECONDS);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", success);
@@ -56,6 +58,13 @@ public class SubscriberController {
             
             return ResponseEntity.ok(response);
             
+        } catch (TimeoutException e) {
+            logger.warn("启动订阅服务超时（可能是MQTT Broker未启动或网络不通）");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "启动订阅超时：请检查MQTT Broker是否已启动，以及订阅端MQTT连接参数是否正确");
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("启动订阅服务失败: {}", e.getMessage(), e);
             
@@ -75,7 +84,7 @@ public class SubscriberController {
     public ResponseEntity<Map<String, Object>> stopSubscribing() {
         try {
             logger.info("接收到停止订阅请求");
-            boolean success = mqttSubscriberService.stopSubscribing().get();
+            boolean success = mqttSubscriberService.stopSubscribing().get(8, TimeUnit.SECONDS);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", success);
@@ -84,6 +93,13 @@ public class SubscriberController {
             
             return ResponseEntity.ok(response);
             
+        } catch (TimeoutException e) {
+            logger.warn("停止订阅服务超时");
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "停止订阅超时：请稍后重试");
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("停止订阅服务失败: {}", e.getMessage(), e);
             

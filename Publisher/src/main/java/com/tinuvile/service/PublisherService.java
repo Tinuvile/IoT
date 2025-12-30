@@ -50,6 +50,7 @@ public class PublisherService {
     
     // 统计信息
     private final AtomicLong publishCount = new AtomicLong(0);
+    private long lastPublishCount = 0; // 用于计算速率的上一次计数
     private LocalDateTime lastRateCalculation = LocalDateTime.now();
     
     /**
@@ -68,6 +69,10 @@ public class PublisherService {
         isPublishing.set(true);
         publishStatus.setRunning(true);
         publishStatus.setStartTime(LocalDateTime.now());
+        
+        // 重置速率计算相关变量
+        lastPublishCount = publishCount.get();
+        lastRateCalculation = LocalDateTime.now();
         
         scheduledExecutor = Executors.newScheduledThreadPool(3);
         
@@ -233,12 +238,12 @@ public class PublisherService {
         
         if (duration.getSeconds() >= 1) {
             long currentCount = publishCount.get();
-            long previousTotal = publishStatus.getTotalPublished();
-            long newPublished = currentCount - previousTotal;
+            long newPublished = currentCount - lastPublishCount;
             
             double rate = newPublished / (double) duration.getSeconds();
             publishStatus.setPublishRate(Math.round(rate * 100.0) / 100.0);
             
+            lastPublishCount = currentCount;
             lastRateCalculation = now;
         }
     }
@@ -289,6 +294,8 @@ public class PublisherService {
         publishStatus.setErrorCount(0);
         publishStatus.setPublishRate(0.0);
         publishCount.set(0);
+        lastPublishCount = 0;
+        lastRateCalculation = LocalDateTime.now();
         
         dataReaderService.resetReadPointers();
         
