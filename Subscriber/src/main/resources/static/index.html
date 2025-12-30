@@ -482,6 +482,7 @@
         function updateSubscriberStatus(status) {
             const subscribeStatusEl = document.getElementById('subscribe-status');
             const subscribeCard = document.getElementById('subscribe-status-card');
+            const subscribeRateEl = document.getElementById('subscribe-rate');
             const startBtn = document.getElementById('start-btn');
             const stopBtn = document.getElementById('stop-btn');
             const totalReceived = document.getElementById('total-received');
@@ -516,9 +517,16 @@
                 }
             }
             
-            // 更新总接收量
-            const totalCount = (status.temperatureCount || 0) + (status.humidityCount || 0) + (status.pressureCount || 0);
+            // 更新总接收量 - 优先使用total_received，否则计算总和
+            const totalCount = status.total_received || 
+                             (status.temperatureCount || 0) + 
+                             (status.humidityCount || 0) + 
+                             (status.pressureCount || 0);
             totalReceived.textContent = formatNumber(totalCount);
+            
+            // 更新接收速率（显示整数）
+            const receiveRate = status.receive_rate || 0;
+            subscribeRateEl.textContent = Math.round(receiveRate) + ' 条/秒';
         }
 
         // 更新最新数据显示
@@ -540,9 +548,13 @@
             isStartButtonLoading = true;
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>启动中...';
-            
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 9000);
+
             fetch('/api/subscriber/start', {
-                method: 'POST'
+                method: 'POST',
+                signal: controller.signal
             })
             .then(response => response.json())
             .then(data => {
@@ -556,11 +568,15 @@
             })
             .catch(error => {
                 console.error('启动失败:', error);
-                showToast('启动失败: ' + error.message, 'danger');
+                const msg = (error && error.name === 'AbortError')
+                    ? '启动订阅超时：请检查MQTT是否已启动'
+                    : ('启动失败: ' + (error.message || '网络错误'));
+                showToast(msg, 'danger');
                 button.disabled = false;
                 button.innerHTML = '<i class="fas fa-play me-2"></i>开始订阅';
             })
             .finally(() => {
+                clearTimeout(timeoutId);
                 isStartButtonLoading = false;
             });
         }
@@ -571,9 +587,13 @@
             isStopButtonLoading = true;
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>停止中...';
-            
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 9000);
+
             fetch('/api/subscriber/stop', {
-                method: 'POST'
+                method: 'POST',
+                signal: controller.signal
             })
             .then(response => response.json())
             .then(data => {
@@ -587,11 +607,15 @@
             })
             .catch(error => {
                 console.error('停止失败:', error);
-                showToast('停止失败: ' + error.message, 'danger');
+                const msg = (error && error.name === 'AbortError')
+                    ? '停止订阅超时：请稍后重试'
+                    : ('停止失败: ' + (error.message || '网络错误'));
+                showToast(msg, 'danger');
                 button.disabled = true;
                 button.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
             })
             .finally(() => {
+                clearTimeout(timeoutId);
                 isStopButtonLoading = false;
             });
         }

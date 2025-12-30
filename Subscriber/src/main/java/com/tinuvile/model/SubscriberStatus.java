@@ -16,6 +16,9 @@ public class SubscriberStatus {
     @JsonProperty("running")
     private boolean running = false;
     
+    @JsonProperty("subscribing")
+    private boolean subscribing = false;
+    
     @JsonProperty("start_time")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startTime;
@@ -76,7 +79,20 @@ public class SubscriberStatus {
     
     public void setRunning(boolean running) {
         this.running = running;
+        this.subscribing = running; // 同步更新subscribing字段
         if (running && startTime == null) {
+            startTime = LocalDateTime.now();
+        }
+    }
+    
+    public boolean isSubscribing() {
+        return subscribing;
+    }
+    
+    public void setSubscribing(boolean subscribing) {
+        this.subscribing = subscribing;
+        this.running = subscribing; // 同步更新running字段
+        if (subscribing && startTime == null) {
             startTime = LocalDateTime.now();
         }
     }

@@ -392,6 +392,8 @@
             setInterval(fetchSystemInfo, 5000);
             setInterval(fetchSubscriberStatus, 2000);
             setInterval(fetchLatestData, 3000);
+            // 每秒更新运行时长
+            setInterval(updateRunningTime, 1000);
         });
         
         // 初始化接收速率图表
@@ -508,7 +510,14 @@
                     stopBtn.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
                 }
                 
-                if (!startTime) {
+                // 从后端获取开始时间，如果后端有的话
+                if (status.start_time) {
+                    const backendStartTime = new Date(status.start_time);
+                    if (!startTime || Math.abs(startTime - backendStartTime) > 1000) {
+                        startTime = backendStartTime;
+                    }
+                } else if (!startTime) {
+                    // 如果后端没有开始时间，使用当前时间
                     startTime = new Date();
                 }
             } else {
@@ -529,8 +538,23 @@
                 startTime = null;
             }
             
-            // 更新运行时长
-            if (startTime) {
+            // 更新运行时长（由定时器每秒调用updateRunningTime）
+            updateRunningTime();
+            
+            // 更新接收速率图表
+            if (isSubscribing) {
+                const currentTotal = status.total_received || 
+                                  ((status.temperatureCount || 0) + 
+                                   (status.humidityCount || 0) + 
+                                   (status.pressureCount || 0));
+                updateReceiveRateChart(currentTotal);
+            }
+        }
+        
+        // 更新运行时长（每秒调用）
+        function updateRunningTime() {
+            const runningTimeEl = document.getElementById('running-time');
+            if (startTime && isSubscribing) {
                 const now = new Date();
                 const elapsed = Math.floor((now - startTime) / 1000);
                 const hours = Math.floor(elapsed / 3600);
@@ -542,14 +566,6 @@
                     String(seconds).padStart(2, '0');
             } else {
                 runningTimeEl.textContent = '00:00:00';
-            }
-            
-            // 更新接收速率图表
-            if (isSubscribing) {
-                const currentTotal = (status.temperatureCount || 0) + 
-                                  (status.humidityCount || 0) + 
-                                  (status.pressureCount || 0);
-                updateReceiveRateChart(currentTotal);
             }
         }
 
@@ -589,15 +605,23 @@
             isStartButtonLoading = true;
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>启动中...';
-            
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 9000);
+
             fetch('/api/subscriber/start', {
-                method: 'POST'
+                method: 'POST',
+                signal: controller.signal
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showToast('订阅服务已启动', 'success');
                     startTime = new Date();
+                    // 立即刷新状态以更新按钮
+                    setTimeout(() => {
+                        fetchSubscriberStatus();
+                    }, 500);
                 } else {
                     showToast('启动失败: ' + data.message, 'danger');
                     button.disabled = false;
@@ -606,11 +630,15 @@
             })
             .catch(error => {
                 console.error('启动失败:', error);
-                showToast('启动失败', 'danger');
+                const msg = (error && error.name === 'AbortError')
+                    ? '启动订阅超时：请检查MQTT是否已启动'
+                    : ('启动失败: ' + (error.message || '网络错误'));
+                showToast(msg, 'danger');
                 button.disabled = false;
                 button.innerHTML = '<i class="fas fa-play me-2"></i>开始订阅';
             })
             .finally(() => {
+                clearTimeout(timeoutId);
                 isStartButtonLoading = false;
             });
         }
@@ -621,15 +649,23 @@
             isStopButtonLoading = true;
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>停止中...';
-            
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 9000);
+
             fetch('/api/subscriber/stop', {
-                method: 'POST'
+                method: 'POST',
+                signal: controller.signal
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showToast('订阅服务已停止', 'success');
                     startTime = null;
+                    // 立即刷新状态以更新按钮
+                    setTimeout(() => {
+                        fetchSubscriberStatus();
+                    }, 500);
                 } else {
                     showToast('停止失败: ' + data.message, 'danger');
                     button.disabled = true;
@@ -638,11 +674,15 @@
             })
             .catch(error => {
                 console.error('停止失败:', error);
-                showToast('停止失败', 'danger');
+                const msg = (error && error.name === 'AbortError')
+                    ? '停止订阅超时：请稍后重试'
+                    : ('停止失败: ' + (error.message || '网络错误'));
+                showToast(msg, 'danger');
                 button.disabled = true;
                 button.innerHTML = '<i class="fas fa-stop me-2"></i>停止订阅';
             })
             .finally(() => {
+                clearTimeout(timeoutId);
                 isStopButtonLoading = false;
             });
         }

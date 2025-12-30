@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT数据分析系统</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <!-- 自定义样式 -->
+    <style>
+        .sensor-card {
+            transition: transform 0.2s;
+        }
+        .sensor-card:hover {
+            transform: translateY(-2px);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .sensor-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .sensor-unit {
+            font-size: 1rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>IoT数据分析系统
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/analysis">数据分析</a>
+                <a class="nav-link" href="/analysis/dashboard">仪表板</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- 最新数据概览 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2>实时数据概览</h2>
+            </div>
+            <div class="col-md-4 mb-3" th:each="sensorType : ${sensorTypes}">
+                <div class="card sensor-card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title" th:text="${sensorType.displayName}">传感器类型</h5>
+                        <div class="sensor-value" th:if="${latestData.containsKey(sensorType)}">
+                            <span th:text="${latestData.get(sensorType).value}">--</span>
+                            <span class="sensor-unit" th:text="${sensorType.unit}">单位</span>
+                        </div>
+                        <div class="sensor-value text-muted" th:unless="${latestData.containsKey(sensorType)}">
+                            <span>暂无数据</span>
+                        </div>
+                        <small class="text-muted" th:if="${latestData.containsKey(sensorType)}">
+                            更新时间: <span th:text="${#temporals.format(latestData.get(sensorType).timestamp, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据分析控制面板 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>数据分析控制面板</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="analysisForm">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label for="sensorTypeSelect" class="form-label">传感器类型</label>
+                                    <select class="form-select" id="sensorTypeSelect" name="sensorType">
+                                        <option th:each="sensorType : ${sensorTypes}" 
+                                                th:value="${sensorType.name()}" 
+                                                th:text="${sensorType.displayName}"
+                                                th:selected="${sensorType.name() == 'temperature'}">
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="startTime" class="form-label">开始时间</label>
+                                    <input type="datetime-local" class="form-control" id="startTime" name="startTime" 
+                                           th:value="${defaultStartTime}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="endTime" class="form-label">结束时间</label>
+                                    <input type="datetime-local" class="form-control" id="endTime" name="endTime" 
+                                           th:value="${defaultEndTime}">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary me-2" onclick="loadChartData()">
+                                        <i class="fas fa-search me-1"></i>分析数据
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="loadLatestData()">
+                                        <i class="fas fa-refresh me-1"></i>最新数据
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表展示区域 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>数据趋势图</h4>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleChartType()">
+                                切换图表类型
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="loadingIndicator" class="loading" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在加载数据...</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="dataChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>统计信息</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="statisticsInfo" class="row">
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <h5 class="text-primary" id="avgValue">--</h5>
+                                    <small class="text-muted">平均值</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <h5 class="text-success" id="minValue">--</h5>
+                                    <small class="text-muted">最小值</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <h5 class="text-danger" id="maxValue">--</h5>
+                                    <small class="text-muted">最大值</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <h5 class="text-info" id="totalCount">--</h5>
+                                    <small class="text-muted">数据总数</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <h5 class="text-warning" id="validCount">--</h5>
+                                    <small class="text-muted">有效数据</small>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <h5 class="text-secondary" id="qualityPercent">--</h5>
+                                    <small class="text-muted">数据质量</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <script src="https://kit.fontawesome.com/your-font-awesome-kit.js" crossorigin="anonymous"></script>
+
+    <script>
+        let chart = null;
+        let currentChartType = 'line';
+
+        // 传感器类型映射表
+        const sensorTypeMap = {
+            'temperature': { displayName: '温度', unit: '°C' },
+            'humidity': { displayName: '湿度', unit: '%' },
+            'pressure': { displayName: '气压', unit: 'hPa' },
+            'light': { displayName: '光照', unit: 'lux' },
+            'air_quality': { displayName: '空气质量', unit: 'AQI' }
+        };
+
+        // 获取传感器类型信息
+        function getSensorTypeInfo(sensorTypeName) {
+            return sensorTypeMap[sensorTypeName] || { displayName: sensorTypeName, unit: '' };
+        }
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            loadChartData();
+        });
+
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('dataChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: currentChartType,
+                data: {
+                    datasets: [{
+                        label: '传感器数据',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                displayFormats: {
+                                    hour: 'MM-dd HH:mm',
+                                    day: 'MM-dd'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '时间'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '数值'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // 加载图表数据
+        function loadChartData() {
+            const sensorType = document.getElementById('sensorTypeSelect').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+
+            if (!startTime || !endTime) {
+                alert('请选择时间范围');
+                return;
+            }
+
+            showLoading(true);
+
+            // 加载历史数据
+            fetch(`/analysis/api/history?sensorType=${sensorType}&startTime=${startTime}&endTime=${endTime}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateChart(data.data, sensorType);
+                        loadStatistics(sensorType, startTime, endTime);
+                    } else {
+                        console.error('加载数据失败:', data.error);
+                        alert('加载数据失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('请求失败:', error);
+                    alert('请求失败: ' + error.message);
+                })
+                .finally(() => {
+                    showLoading(false);
+                });
+        }
+
+        // 加载最新数据
+        function loadLatestData() {
+            const sensorType = document.getElementById('sensorTypeSelect').value;
+            
+            showLoading(true);
+
+            fetch(`/analysis/api/latest?sensorType=${sensorType}&limit=100`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateChart(data.data, sensorType);
+                        // 计算时间范围用于统计
+                        if (data.data.length > 0) {
+                            const timestamps = data.data.map(d => new Date(d.timestamp));
+                            const minTime = new Date(Math.min(...timestamps));
+                            const maxTime = new Date(Math.max(...timestamps));
+                            loadStatistics(sensorType, minTime.toISOString().slice(0, 19), maxTime.toISOString().slice(0, 19));
+                        }
+                    } else {
+                        console.error('加载数据失败:', data.error);
+                        alert('加载数据失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('请求失败:', error);
+                    alert('请求失败: ' + error.message);
+                })
+                .finally(() => {
+                    showLoading(false);
+                });
+        }
+
+        // 加载统计数据
+        function loadStatistics(sensorType, startTime, endTime) {
+            console.log('请求统计数据:', { sensorType, startTime, endTime });
+            
+            const url = `/analysis/api/statistics?sensorType=${sensorType}&startTime=${startTime}&endTime=${endTime}`;
+            console.log('统计API URL:', url);
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('统计API响应:', data);
+                    if (data.success) {
+                        console.log('统计数据:', data.statistics);
+                        updateStatistics(data.statistics);
+                    } else {
+                        console.error('加载统计数据失败:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载统计数据失败:', error);
+                });
+        }
+
+        // 更新图表
+        function updateChart(data, sensorTypeOrName) {
+            const chartData = data.map(item => ({
+                x: new Date(item.timestamp),
+                y: parseFloat(item.value)
+            }));
+
+            // 获取传感器类型信息
+            let sensorInfo;
+            if (typeof sensorTypeOrName === 'string') {
+                sensorInfo = getSensorTypeInfo(sensorTypeOrName);
+            } else if (sensorTypeOrName && sensorTypeOrName.displayName) {
+                sensorInfo = sensorTypeOrName;
+            } else {
+                // 如果是枚举对象但没有displayName，根据名称获取信息
+                const typeName = sensorTypeOrName.name || sensorTypeOrName.value || sensorTypeOrName;
+                sensorInfo = getSensorTypeInfo(typeName);
+            }
+
+            chart.data.datasets[0].data = chartData;
+            chart.data.datasets[0].label = `${sensorInfo.displayName} (${sensorInfo.unit})`;
+            chart.options.scales.y.title.text = `${sensorInfo.displayName} (${sensorInfo.unit})`;
+            
+            chart.update();
+        }
+
+        // 更新统计信息
+        function updateStatistics(statistics) {
+            document.getElementById('avgValue').textContent = statistics.avgValue ? parseFloat(statistics.avgValue).toFixed(2) : '--';
+            document.getElementById('minValue').textContent = statistics.minValue ? parseFloat(statistics.minValue).toFixed(2) : '--';
+            document.getElementById('maxValue').textContent = statistics.maxValue ? parseFloat(statistics.maxValue).toFixed(2) : '--';
+            document.getElementById('totalCount').textContent = statistics.totalCount || '--';
+            document.getElementById('validCount').textContent = statistics.validCount || '--';
+            
+            const qualityPercent = statistics.dataQualityPercent;
+            document.getElementById('qualityPercent').textContent = qualityPercent ? qualityPercent.toFixed(1) + '%' : '--';
+        }
+
+        // 切换图表类型
+        function toggleChartType() {
+            currentChartType = currentChartType === 'line' ? 'bar' : 'line';
+            
+            chart.config.type = currentChartType;
+            chart.update();
+        }
+
+        // 显示/隐藏加载指示器
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
