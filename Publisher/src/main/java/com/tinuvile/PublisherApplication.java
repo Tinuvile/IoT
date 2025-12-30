@@ -17,8 +17,8 @@ public class PublisherApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(PublisherApplication.class, args);
-        System.out.println("🚀 IoT Publisher Application Started!");
-        System.out.println("📡 Web Interface: http://localhost:8081");
-        System.out.println("📊 Management: http://localhost:8081/actuator");
+        System.out.println("IoT Publisher Application Started!");
+        System.out.println("Web Interface: http://localhost:8081");
+        System.out.println("Management: http://localhost:8081/actuator");
     }
 }

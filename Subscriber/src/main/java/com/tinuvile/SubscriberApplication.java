@@ -17,8 +17,8 @@ public class SubscriberApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(SubscriberApplication.class, args);
-        System.out.println("🚀 IoT Subscriber Application Started!");
-        System.out.println("📡 Web Interface: http://localhost:8082");
-        System.out.println("📊 Management: http://localhost:8082/actuator");
+        System.out.println("IoT Subscriber Application Started!");
+        System.out.println("Web Interface: http://localhost:8082");
+        System.out.println("Management: http://localhost:8082/actuator");
     }
 }
