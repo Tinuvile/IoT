@@ -78,6 +78,13 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- Apache Commons Math - 数学和统计库 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.6.1</version>
+        </dependency>
+
         <!-- 开发工具 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

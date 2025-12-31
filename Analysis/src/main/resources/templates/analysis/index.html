@@ -90,7 +90,7 @@
                     <div class="card-body">
                         <form id="analysisForm">
                             <div class="row">
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="sensorTypeSelect" class="form-label">传感器类型</label>
                                     <select class="form-select" id="sensorTypeSelect" name="sensorType">
                                         <option th:each="sensorType : ${sensorTypes}" 
@@ -100,22 +100,40 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="startTime" class="form-label">开始时间</label>
                                     <input type="datetime-local" class="form-control" id="startTime" name="startTime" 
                                            th:value="${defaultStartTime}">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label for="endTime" class="form-label">结束时间</label>
                                     <input type="datetime-local" class="form-control" id="endTime" name="endTime" 
                                            th:value="${defaultEndTime}">
                                 </div>
-                                <div class="col-md-3 d-flex align-items-end">
+                                <div class="col-md-2">
+                                    <label for="predictionHours" class="form-label">预测时长(小时)</label>
+                                    <input type="number" class="form-control" id="predictionHours" name="predictionHours" 
+                                           value="24" min="1" max="168">
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="predictionMethod" class="form-label">预测方法</label>
+                                    <select class="form-select" id="predictionMethod" name="predictionMethod">
+                                        <option value="auto" selected>自动选择</option>
+                                        <option value="polynomial">多项式回归</option>
+                                        <option value="linear">线性回归</option>
+                                        <option value="moving_average">移动平均</option>
+                                        <option value="exponential_smoothing">指数平滑</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
                                     <button type="button" class="btn btn-primary me-2" onclick="loadChartData()">
                                         <i class="fas fa-search me-1"></i>分析数据
                                     </button>
-                                    <button type="button" class="btn btn-secondary" onclick="loadLatestData()">
+                                    <button type="button" class="btn btn-secondary me-2" onclick="loadLatestData()">
                                         <i class="fas fa-refresh me-1"></i>最新数据
+                                    </button>
+                                    <button type="button" class="btn btn-success" onclick="loadPredictionData()">
+                                        <i class="fas fa-chart-line me-1"></i>预测数据
                                     </button>
                                 </div>
                             </div>
@@ -146,6 +164,34 @@
                         </div>
                         <div class="chart-container">
                             <canvas id="dataChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预测图表展示区域 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>数据预测图</h4>
+                        <div>
+                            <span class="badge bg-info me-2" id="predictionInfo">暂无预测数据</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearPrediction()">
+                                清除预测
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="predictionLoadingIndicator" class="loading" style="display: none;">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">生成预测中...</span>
+                            </div>
+                            <p class="mt-2">正在生成预测数据...</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="predictionChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -212,6 +258,7 @@
 
     <script>
         let chart = null;
+        let predictionChart = null;
         let currentChartType = 'line';
 
         // 传感器类型映射表
@@ -231,6 +278,7 @@
         // 初始化页面
         document.addEventListener('DOMContentLoaded', function() {
             initChart();
+            initPredictionChart();
             loadChartData();
         });
 
@@ -426,9 +474,272 @@
             chart.update();
         }
 
+        // 初始化预测图表
+        function initPredictionChart() {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            predictionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: '历史数据',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1,
+                            pointRadius: 2
+                        },
+                        {
+                            label: '预测数据',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderDash: [5, 5],
+                            tension: 0.1,
+                            pointRadius: 3,
+                            pointBackgroundColor: 'rgb(255, 99, 132)'
+                        },
+                        {
+                            label: '置信区间',
+                            data: [],
+                            borderColor: 'rgba(255, 99, 132, 0.3)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            fill: '+1',
+                            tension: 0.1,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                displayFormats: {
+                                    hour: 'MM-dd HH:mm',
+                                    day: 'MM-dd'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '时间'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '数值'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(2);
+                                    }
+                                    // 如果是预测数据，显示置信度
+                                    if (context.datasetIndex === 1 && context.raw.confidence) {
+                                        label += ` (置信度: ${(context.raw.confidence * 100).toFixed(1)}%)`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // 加载预测数据
+        function loadPredictionData() {
+            const sensorType = document.getElementById('sensorTypeSelect').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const predictionHours = document.getElementById('predictionHours').value;
+            const predictionMethod = document.getElementById('predictionMethod').value;
+
+            if (!startTime || !endTime) {
+                alert('请选择时间范围');
+                return;
+            }
+
+            if (!predictionHours || predictionHours < 1 || predictionHours > 168) {
+                alert('预测时长必须在1-168小时之间');
+                return;
+            }
+
+            showPredictionLoading(true);
+
+            // 同时获取历史数据和预测数据
+            Promise.all([
+                fetch(`/analysis/api/history?sensorType=${sensorType}&startTime=${startTime}&endTime=${endTime}`),
+                fetch(`/analysis/api/prediction?sensorType=${sensorType}&startTime=${startTime}&endTime=${endTime}&predictionHours=${predictionHours}&method=${predictionMethod}`)
+            ])
+            .then(responses => Promise.all(responses.map(response => response.json())))
+            .then(([historyData, predictionData]) => {
+                if (historyData.success && predictionData.success) {
+                    updatePredictionChart(historyData.data, predictionData.predictions, sensorType);
+                    updatePredictionInfo(predictionData.predictions.length, predictionHours, predictionData.method, predictionData.methodDescription);
+                } else {
+                    const error = !historyData.success ? historyData.error : predictionData.error;
+                    console.error('加载数据失败:', error);
+                    alert('加载数据失败: ' + error);
+                }
+            })
+            .catch(error => {
+                console.error('请求失败:', error);
+                alert('请求失败: ' + error.message);
+            })
+            .finally(() => {
+                showPredictionLoading(false);
+            });
+        }
+
+        // 更新预测图表
+        function updatePredictionChart(historyData, predictionData, sensorTypeOrName) {
+            // 处理历史数据
+            const historicalChartData = historyData.map(item => ({
+                x: new Date(item.timestamp),
+                y: parseFloat(item.value)
+            }));
+
+            // 处理预测数据
+            const predictionChartData = predictionData.map(item => ({
+                x: new Date(item.timestamp),
+                y: parseFloat(item.predictedValue),
+                confidence: parseFloat(item.confidenceLevel),
+                method: item.predictionMethod
+            }));
+
+            // 获取传感器类型信息
+            let sensorInfo;
+            if (typeof sensorTypeOrName === 'string') {
+                sensorInfo = getSensorTypeInfo(sensorTypeOrName);
+            } else if (sensorTypeOrName && sensorTypeOrName.displayName) {
+                sensorInfo = sensorTypeOrName;
+            } else {
+                const typeName = sensorTypeOrName.name || sensorTypeOrName.value || sensorTypeOrName;
+                sensorInfo = getSensorTypeInfo(typeName);
+            }
+
+            // 更新图表数据
+            predictionChart.data.datasets[0].data = historicalChartData;
+            predictionChart.data.datasets[0].label = `历史${sensorInfo.displayName} (${sensorInfo.unit})`;
+            
+            predictionChart.data.datasets[1].data = predictionChartData;
+            predictionChart.data.datasets[1].label = `预测${sensorInfo.displayName} (${sensorInfo.unit})`;
+
+            // 生成置信区间数据（上界和下界）
+            const confidenceUpperData = predictionChartData.map(item => {
+                const margin = Math.abs(item.y) * (1 - item.confidence) * 0.3; // 置信度越低，区间越大
+                return {
+                    x: item.x,
+                    y: item.y + margin
+                };
+            });
+            
+            const confidenceLowerData = predictionChartData.map(item => {
+                const margin = Math.abs(item.y) * (1 - item.confidence) * 0.3;
+                return {
+                    x: item.x,
+                    y: item.y - margin
+                };
+            });
+            
+            predictionChart.data.datasets[2].data = confidenceUpperData;
+            predictionChart.data.datasets[2].label = '置信区间';
+
+            predictionChart.options.scales.y.title.text = `${sensorInfo.displayName} (${sensorInfo.unit})`;
+            
+            // 更新工具提示以显示预测方法
+            predictionChart.options.plugins.tooltip.callbacks.label = function(context) {
+                let label = context.dataset.label || '';
+                if (label) {
+                    label += ': ';
+                }
+                if (context.parsed.y !== null) {
+                    label += context.parsed.y.toFixed(2);
+                }
+                // 如果是预测数据，显示置信度和方法
+                if (context.datasetIndex === 1 && context.raw.confidence) {
+                    const confidence = (context.raw.confidence * 100).toFixed(1);
+                    const method = getMethodDisplayName(context.raw.method || '');
+                    label += ` (置信度: ${confidence}%, 方法: ${method})`;
+                }
+                return label;
+            };
+            
+            predictionChart.update();
+        }
+
+        // 更新预测信息
+        function updatePredictionInfo(predictionCount, predictionHours, method, methodDescription) {
+            const infoElement = document.getElementById('predictionInfo');
+            if (predictionCount > 0) {
+                const methodName = getMethodDisplayName(method);
+                infoElement.innerHTML = `
+                    <span class="fw-bold">${predictionCount}个预测点 (${predictionHours}h)</span><br>
+                    <small>使用: ${methodName}</small>
+                `;
+                infoElement.className = 'badge bg-success me-2';
+                infoElement.title = methodDescription || '';
+            } else {
+                infoElement.textContent = '预测生成失败';
+                infoElement.className = 'badge bg-danger me-2';
+            }
+        }
+        
+        // 获取预测方法显示名称
+        function getMethodDisplayName(method) {
+            const methodNames = {
+                'auto': '自动选择',
+                'linear': '线性回归',
+                'polynomial': '多项式回归',
+                'moving_average': '移动平均',
+                'exponential_smoothing': '指数平滑'
+            };
+            return methodNames[method] || method;
+        }
+
+        // 清除预测数据
+        function clearPrediction() {
+            predictionChart.data.datasets[0].data = [];
+            predictionChart.data.datasets[1].data = [];
+            predictionChart.data.datasets[2].data = [];
+            predictionChart.update();
+            
+            const infoElement = document.getElementById('predictionInfo');
+            infoElement.textContent = '暂无预测数据';
+            infoElement.className = 'badge bg-info me-2';
+        }
+
         // 显示/隐藏加载指示器
         function showLoading(show) {
             document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+
+        // 显示/隐藏预测加载指示器
+        function showPredictionLoading(show) {
+            document.getElementById('predictionLoadingIndicator').style.display = show ? 'block' : 'none';
         }
     </script>
 </body>
